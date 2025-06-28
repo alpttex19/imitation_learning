@@ -71,7 +71,7 @@ def create_empty_dataset():
 
 
 def populate_dataset(dataset: LeRobotDataset):
-    episode = 1
+    episode = 100
 
     env = PickAndPlaceEnv()
     task = "pick_and_place"
