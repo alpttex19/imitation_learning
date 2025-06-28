@@ -1,0 +1,1 @@
+from .pick_and_place_config import PickAndPlaceEnvConfig
