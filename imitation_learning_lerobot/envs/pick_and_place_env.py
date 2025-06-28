@@ -1,4 +1,6 @@
+import os
 import time
+from pathlib import Path
 import numpy as np
 import spatialmath as sm
 
@@ -23,7 +25,8 @@ class PickAndPlaceEnv:
         self._latest_action = None
         self._render_cache = None
 
-        self._mj_model: mujoco.MjModel = mujoco.MjModel.from_xml_path('../assets/scenes/scene.xml')
+        scene_path = Path(__file__).parent.parent / Path("assets/scenes/scene.xml")
+        self._mj_model: mujoco.MjModel = mujoco.MjModel.from_xml_path(os.fspath(scene_path))
         self._mj_data: mujoco.MjData = mujoco.MjData(self._mj_model)
         mujoco.mj_forward(self._mj_model, self._mj_data)
 

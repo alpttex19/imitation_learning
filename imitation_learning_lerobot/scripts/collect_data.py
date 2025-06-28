@@ -1,3 +1,4 @@
+from pathlib import Path
 import dataclasses
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 
@@ -21,7 +22,7 @@ def create_empty_dataset():
             "position": ["px",
                          "py",
                          "pz",
-                         "grasp"],
+                         "gripper"],
         }
     }, "action": {
         "dtype": "float32",
@@ -30,7 +31,7 @@ def create_empty_dataset():
             "position": ["px",
                          "py",
                          "pz",
-                         "grasp"],
+                         "gripper"],
         }
     }, "observation.images.top": {
         "dtype": "video",
@@ -57,7 +58,7 @@ def create_empty_dataset():
         repo_id="pick_and_place",
         fps=25,
         features=features,
-        root="../../outputs/pick_and_place",
+        root=Path(__file__).parent.parent.parent / Path("outputs/datasets/pick_and_place"),
         robot_type="UR5e",
         use_videos=config.use_videos,
         tolerance_s=config.tolerance_s,

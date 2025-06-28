@@ -14,8 +14,8 @@ from lerobot.configs.eval import EvalPipelineConfig
 from lerobot.common.utils.utils import get_safe_torch_device
 from lerobot.common.envs.utils import preprocess_observation
 
-from configs import PickAndPlaceEnvConfig
-from envs import PickAndPlaceEnv
+from imitation_learning_lerobot import configs
+from imitation_learning_lerobot.envs import PickAndPlaceEnv
 
 
 @parser.wrap()
