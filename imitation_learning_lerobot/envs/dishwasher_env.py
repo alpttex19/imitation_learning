@@ -34,13 +34,15 @@ class DishWasherEnv:
                                         "left/wrist_angle", "left/wrist_rotate"]
         self._left_robot_T = sm.SE3()
         self._left_T0 = sm.SE3()
+        self._left_tool_joint_name = "left/left_finger"
 
         self._right_robot = VX300S()
         self._right_robot_q = np.zeros(self._right_robot.dof)
-        self._right_robot_joint_names = ["left/waist", "left/shoulder", "left/elbow", "left/forearm_roll",
-                                         "left/wrist_angle", "left/wrist_rotate"]
+        self._right_robot_joint_names = ["right/waist", "right/shoulder", "right/elbow", "right/forearm_roll",
+                                         "right/wrist_angle", "right/wrist_rotate"]
         self._right_robot_T = sm.SE3()
         self._right_T0 = sm.SE3()
+        self._right_tool_joint_name = "right/right_finger"
 
         self._height = 480
         self._width = 640
@@ -60,25 +62,25 @@ class DishWasherEnv:
         self._right_robot.disable_base()
         self._right_robot.disable_tool()
 
-        self._left_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "left/base_link").t)
-        self._left_robot_q = np.array([0.0, 0.0, np.pi / 2, 0.0, -np.pi / 2, 0.0])
+        self._left_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "left/base_link"))
+        self._left_robot_q = np.array([0.0, -0.96, 1.16, 0.0, -0.3, 0.0])
         self._left_robot.set_joint(self._left_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._left_robot_q[i]) for i, jn in
          enumerate(self._left_robot_joint_names)]
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        self._left_robot.set_tool(np.array([0.0, 0.0, 0.2]))
+        self._left_robot.set_tool(sm.SE3.RPY(0.0, -np.pi/2, np.pi) * sm.SE3.Trans([0.13, 0.0, -0.003]))
         self._left_robot_T = self._left_robot.fkine(self._left_robot_q)
         self._left_T0 = self._left_robot_T.copy()
 
-        self._right_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "right/base_link").t)
-        self._right_robot_q = np.array([0.0, 0.0, np.pi / 2, 0.0, -np.pi / 2, 0.0])
+        self._right_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "right/base_link"))
+        self._right_robot_q = np.array([0.0, -0.96, 1.16, 0.0, -0.3, 0.0])
         self._right_robot.set_joint(self._right_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._right_robot_q[i]) for i, jn in
          enumerate(self._right_robot_joint_names)]
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        self._right_robot.set_tool(np.array([0.0, 0.0, 0.2]))
+        self._right_robot.set_tool(sm.SE3.RPY(0.0, -np.pi/2, np.pi) * sm.SE3.Trans([0.13, 0.0, -0.003]))
         self._right_robot_T = self._right_robot.fkine(self._right_robot_q)
         self._right_T0 = self._right_robot_T.copy()
 
@@ -142,12 +144,21 @@ class DishWasherEnv:
     def _get_observation(self):
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        # for i in range(len(self._ur5e_joint_names)):
-        #     self._robot_q[i] = mj.get_joint_q(self._mj_model, self._mj_data, self._ur5e_joint_names[i])[0]
-        # self._robot_T = self._robot.fkine(self._robot_q)
         agent_pos = np.zeros(14, dtype=np.float32)
-        # agent_pos[:3] = self._robot_T.t
-        # agent_pos[3] = np.linalg.norm(self._mj_data.site('left_pad').xpos - self._mj_data.site('right_pad').xpos)
+
+        for i in range(len(self._left_robot_joint_names)):
+            self._left_robot_q[i] = mj.get_joint_q(self._mj_model, self._mj_data, self._left_robot_joint_names[i])[0]
+        self._left_robot_T = self._left_robot.fkine(self._left_robot_q)
+        agent_pos[:3] = self._left_robot_T.t
+        agent_pos[3: 6] = self._left_robot_T.rpy()
+        agent_pos[6] = mj.get_joint_q(self._mj_model, self._mj_data, self._left_tool_joint_name)[0]
+
+        for i in range(len(self._right_robot_joint_names)):
+            self._right_robot_q[i] = mj.get_joint_q(self._mj_model, self._mj_data, self._right_robot_joint_names[i])[0]
+        self._right_robot_T = self._right_robot.fkine(self._right_robot_q)
+        agent_pos[7: 10] = self._right_robot_T.t
+        agent_pos[10: 13] = self._right_robot_T.rpy()
+        agent_pos[13] = mj.get_joint_q(self._mj_model, self._mj_data, self._right_tool_joint_name)[0]
 
         overhead_cam_id = mujoco.mj_name2id(self._mj_model, mujoco.mjtObj.mjOBJ_CAMERA, "overhead_cam")
         worms_eye_cam_id = mujoco.mj_name2id(self._mj_model, mujoco.mjtObj.mjOBJ_CAMERA, "worms_eye_cam")
@@ -190,6 +201,14 @@ class DishWasherEnv:
         actions = []
 
         while True:
+
+            if self._step_num >= 100:
+                self.close()
+                return {
+                    "observations": observations,
+                    "actions": actions
+                }
+
             action = np.zeros(14)
             action[:3] = self._left_T0.t
             action[7:10] = self._right_T0.t
