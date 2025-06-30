@@ -123,8 +123,11 @@ class Robot(abc.ABC):
         assert len(q)  # inverse kinematics failure
         self.q0 = q[:]
 
+    def cal_Tbe(self, Twt: SE3) -> SE3:
+        return self._base.inv() * Twt * self._tool.inv()
+
     @abc.abstractmethod
-    def ikine(self, Tep: SE3) -> np.ndarray:
+    def ikine(self, Twt: SE3) -> np.ndarray:
         pass
 
     def get_joint(self):
@@ -228,16 +231,16 @@ class Robot(abc.ABC):
 
         return taulist
 
-    def set_tool(self, tool: np.ndarray):
-        self._tool = SE3.Trans(tool)
+    def set_tool(self, tool: SE3):
+        self._tool = tool.copy()
         self.robot.tool = self._tool
 
     def disable_tool(self):
         self._tool = SE3()
         self.robot.tool = self._tool
 
-    def set_base(self, base: np.ndarray):
-        self._base = SE3.Trans(base)
+    def set_base(self, base: SE3):
+        self._base = base.copy()
         self.robot.base = self._base
 
     def disable_base(self):

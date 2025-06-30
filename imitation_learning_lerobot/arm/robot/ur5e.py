@@ -95,32 +95,32 @@ class UR5e(Robot):
 
         self.robot_config = RobotConfig()
 
-    def ikine(self, Tep: SE3) -> np.ndarray:
+    def ikine(self, Twt: SE3) -> np.ndarray:
 
-        T07: SE3 = self._base.inv() * Tep * self._tool.inv()
+        Tbe = self.cal_Tbe(Twt)
 
-        wpc = self.cal_wpc(T07)
+        t_wpc = self.cal_wcp(Tbe)
 
         thetas = [0.0 for _ in range(self.dof)]
 
         # solve theta1
-        theta1_condition = np.power(wpc[1], 2) + np.power(wpc[0], 2) - np.power(self.d_array[3], 2)
+        theta1_condition = np.power(t_wpc[1], 2) + np.power(t_wpc[0], 2) - np.power(self.d_array[3], 2)
         if theta1_condition < 0:
             return np.array([])
-        if MathUtils.near_zero(np.linalg.norm([wpc[1], wpc[0]])):
+        if MathUtils.near_zero(np.linalg.norm([t_wpc[1], t_wpc[0]])):
             thetas[0] = self.q0[0] - self.theta_array[0]  # overhead singularity
         else:
             # if self.robot_config.overhead == 0:
-            #     thetas[0] = np.arctan2(wpc[1], wpc[0]) - np.arctan2(self.d_array[3], np.sqrt(theta1_condition))
+            #     thetas[0] = np.arctan2(t_wpc[1], t_wpc[0]) - np.arctan2(self.d_array[3], np.sqrt(theta1_condition))
             # elif self.robot_config.overhead == 1:
-            #     thetas[0] = np.arctan2(wpc[1], wpc[0]) - np.arctan2(self.d_array[3], -np.sqrt(theta1_condition))
+            #     thetas[0] = np.arctan2(t_wpc[1], t_wpc[0]) - np.arctan2(self.d_array[3], -np.sqrt(theta1_condition))
             # else:
             #     return np.array([])
-            thetas[0] = np.arctan2(wpc[1], wpc[0]) - np.arctan2(self.d_array[3],
+            thetas[0] = np.arctan2(t_wpc[1], t_wpc[0]) - np.arctan2(self.d_array[3],
                                                                 self.robot_config.overhead * np.sqrt(theta1_condition))
 
         # solve theta5
-        theta5_condition = -T07.a[0] * np.sin(thetas[0]) + T07.a[1] * np.cos(thetas[0])
+        theta5_condition = -Tbe.a[0] * np.sin(thetas[0]) + Tbe.a[1] * np.cos(thetas[0])
         if np.abs(theta5_condition) > 1:
             return np.array([])
         # if self.robot_config.wrist == 0:
@@ -132,8 +132,8 @@ class UR5e(Robot):
         thetas[4] = self.robot_config.wrist * np.arccos(theta5_condition)
 
         # solve theta6
-        m1 = - T07.n[0] * np.sin(thetas[0]) + T07.n[1] * np.cos(thetas[0])
-        n1 = - T07.o[0] * np.sin(thetas[0]) + T07.o[1] * np.cos(thetas[0])
+        m1 = - Tbe.n[0] * np.sin(thetas[0]) + Tbe.n[1] * np.cos(thetas[0])
+        n1 = - Tbe.o[0] * np.sin(thetas[0]) + Tbe.o[1] * np.cos(thetas[0])
         if MathUtils.near_zero(np.sin(thetas[4])):
             thetas[5] = self.q0[5] - self.theta_array[5]
         else:
@@ -150,7 +150,7 @@ class UR5e(Robot):
                                      self.sigma_array[5],
                                      0.0)
         T46 = T45 * T56
-        T14 = T01.inv() * T07 * T46.inv()
+        T14 = T01.inv() * Tbe * T46.inv()
         x = T14.t[0]
         y = T14.t[2]
 
@@ -196,11 +196,12 @@ class UR5e(Robot):
         return qs
 
     def set_robot_config(self, q):
-        T = self.fkine(q)
-        wpc = self.cal_wpc(T)
+        Twt = self.fkine(q)
+        Tbe = self.cal_Tbe(Twt)
+        t_wpc = self.cal_Tbe(Tbe)
         thetas = [q[i] + self.theta_array[i] for i in range(self.dof)]
 
-        if wrap(np.arctan2(wpc[1], wpc[0]) - wrap(thetas[0])[0])[0] <= np.pi / 2:
+        if np.cos(wrap(np.arctan2(t_wpc[1], t_wpc[0]) - wrap(thetas[0])[0])[0]) >= 0.0:
             self.robot_config.overhead = 1
         else:
             self.robot_config.overhead = -1
@@ -217,8 +218,8 @@ class UR5e(Robot):
         else:
             self.robot_config.wrist = -1
 
-    def cal_wpc(self, T: SE3) -> np.ndarray:
-        t = T.t - self.d_array[5] * T.a
+    def cal_wcp(self, Tbe: SE3) -> np.ndarray:
+        t = Tbe.t - self.d_array[5] * Tbe.a
         t[2] -= self.d_array[0]
         return t
 
