@@ -28,7 +28,7 @@
     </default>
   </default>
   <worldbody>
-    <body name="plate" pos="0 -0.2 0.2" quat="1 1 0 0" childclass="plate">
+    <body name="plate" pos="0 0 0" childclass="plate">
       <freejoint name="plate_free_joint"/>
       <geom name="mesh" mesh="plate_01" class="plate_visual"/>
       <geom name="collider_001" mesh="plate_01_collision_001" class="plate_collision"/>

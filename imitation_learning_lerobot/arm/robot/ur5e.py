@@ -198,7 +198,7 @@ class UR5e(Robot):
     def set_robot_config(self, q):
         Twt = self.fkine(q)
         Tbe = self.cal_Tbe(Twt)
-        t_wpc = self.cal_Tbe(Tbe)
+        t_wpc = self.cal_wcp(Tbe)
         thetas = [q[i] + self.theta_array[i] for i in range(self.dof)]
 
         if np.cos(wrap(np.arctan2(t_wpc[1], t_wpc[0]) - wrap(thetas[0])[0])[0]) >= 0.0:

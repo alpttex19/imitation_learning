@@ -90,4 +90,8 @@
     <geom class="frame" pos="0.43 -0.361 1.02" quat="0 0 0 1" mesh="extrusion_2040_1000"/>
     <geom class="frame" pos="0 -0.391 -0.01" quat="0 0 0 1" mesh="wormseye_mount"/>
   </worldbody>
+
+  <equality>
+    <weld name="dish_drainer_attach" body1="world" body2="dish_drainer" active="false" />
+  </equality>
 </mujoco>
