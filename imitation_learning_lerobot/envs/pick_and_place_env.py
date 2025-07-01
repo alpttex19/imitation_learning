@@ -53,16 +53,16 @@ class PickAndPlaceEnv:
         self._robot.disable_base()
         self._robot.disable_tool()
 
-        self._robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "ur5e_base").t)
+        self._robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "ur5e_base"))
         self._robot_q = np.array([0.0, 0.0, np.pi / 2, 0.0, -np.pi / 2, 0.0])
         self._robot.set_joint(self._robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._robot_q[i]) for i, jn in
          enumerate(self._ur5e_joint_names)]
         mujoco.mj_forward(self._mj_model, self._mj_data)
-        mj.attach(self._mj_model, self._mj_data, "attach", "2f85", self._robot.fkine(self._robot_q))
+        mj.attach(self._mj_model, self._mj_data, "attach", "2f85", sm.SE3())
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        self._robot.set_tool(np.array([0.0, 0.0, 0.15]))
+        self._robot.set_tool(sm.SE3.Trans(0.0, 0.0, 0.15))
         self._robot_T = self._robot.fkine(self._robot_q)
         self._T0 = self._robot_T.copy()
 

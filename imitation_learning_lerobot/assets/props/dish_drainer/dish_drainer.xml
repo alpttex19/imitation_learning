@@ -37,7 +37,8 @@
     <mesh file="../props/dish_drainer/assets/rack_collision_018.obj"/>
   </asset>
   <worldbody>
-    <body name="dish_drainer" pos="0 -0.2 0" childclass="dish_drainer">
+    <body name="dish_drainer" pos="0.1 0 0" childclass="dish_drainer">
+      <freejoint name="dish_drainer_free_joint"/>
       <geom material="dish_drainer" mesh="rack" class="dish_drainer_visual"/>
       <geom mesh="rack_collision_001" class="collision"/>
       <geom mesh="rack_collision_002" class="dish_drainer_collision"/>

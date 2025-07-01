@@ -52,6 +52,8 @@ class DishWasherEnv:
         self._step_num = 0
         self._obj_t = np.zeros(3)
 
+        self._ready_time = 0.4
+
     def reset(self):
         mujoco.mj_resetData(self._mj_model, self._mj_data)
         mujoco.mj_forward(self._mj_model, self._mj_data)
@@ -63,26 +65,54 @@ class DishWasherEnv:
         self._right_robot.disable_tool()
 
         self._left_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "left/base_link"))
-        self._left_robot_q = np.array([0.0, -0.96, 1.16, 0.0, -0.3, 0.0])
+        self._left_robot_q = np.array([0.0, -0.96, 1.16, 0.0, 0.3, 0.0])
         self._left_robot.set_joint(self._left_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._left_robot_q[i]) for i, jn in
          enumerate(self._left_robot_joint_names)]
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        self._left_robot.set_tool(sm.SE3.RPY(0.0, -np.pi/2, np.pi) * sm.SE3.Trans([0.13, 0.0, -0.003]))
+        self._left_robot.set_tool(sm.SE3.RPY(0.0, -np.pi / 2, np.pi) * sm.SE3.Trans([0.13, 0.0, -0.003]))
         self._left_robot_T = self._left_robot.fkine(self._left_robot_q)
         self._left_T0 = self._left_robot_T.copy()
 
         self._right_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "right/base_link"))
-        self._right_robot_q = np.array([0.0, -0.96, 1.16, 0.0, -0.3, 0.0])
+        self._right_robot_q = np.array([0.0, -0.96, 1.16, 0.0, 0.3, 0.0])
         self._right_robot.set_joint(self._right_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._right_robot_q[i]) for i, jn in
          enumerate(self._right_robot_joint_names)]
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        self._right_robot.set_tool(sm.SE3.RPY(0.0, -np.pi/2, np.pi) * sm.SE3.Trans([0.13, 0.0, -0.003]))
+        self._right_robot.set_tool(sm.SE3.RPY(0.0, -np.pi / 2, np.pi) * sm.SE3.Trans([0.13, 0.0, -0.003]))
         self._right_robot_T = self._right_robot.fkine(self._right_robot_q)
         self._right_T0 = self._right_robot_T.copy()
+
+        mj_ctrl = np.zeros(14)
+        mj_ctrl[:6] = self._left_robot_q
+        mj_ctrl[7:13] = self._right_robot_q
+        mujoco.mj_setState(self._mj_model, self._mj_data, mj_ctrl, mujoco.mjtState.mjSTATE_CTRL)
+        mujoco.mj_forward(self._mj_model, self._mj_data)
+
+        px_dish_drainer = 0.0
+        py_dish_drainer = -0.2
+        pz_dish_drainer = 0.0
+        rz_dish_drainer = 0.2
+        T_dish_drainer = sm.SE3.Rt(R=sm.SO3.Rz(rz_dish_drainer),
+                                   t=np.array([px_dish_drainer, py_dish_drainer, pz_dish_drainer]))
+
+        dish_drainer_eq_data = np.zeros(11)
+        dish_drainer_eq_data[3:6] = T_dish_drainer.t
+        dish_drainer_eq_data[6:10] = T_dish_drainer.UnitQuaternion()
+        dish_drainer_eq_data[-1] = 1.0
+        mj.attach(self._mj_model, self._mj_data, "dish_drainer_attach",
+                  "dish_drainer_free_joint", T_dish_drainer, eq_data=dish_drainer_eq_data)
+        mujoco.mj_forward(self._mj_model, self._mj_data)
+
+        px_plate = 0.0
+        py_plate = -0.2
+        pz_plate = 0.2
+        T_plate = sm.SE3.Rt(R=sm.SO3.RPY(np.pi / 2, 0.0, rz_dish_drainer), t=np.array([px_plate, py_plate, pz_plate]))
+        mj.set_free_joint_pose(self._mj_model, self._mj_data, "plate_free_joint", T_plate)
+        mujoco.mj_forward(self._mj_model, self._mj_data)
 
         self._mj_renderer = mujoco.renderer.Renderer(self._mj_model, height=self._height, width=self._width)
         if self._render_mode == "human":
@@ -90,30 +120,37 @@ class DishWasherEnv:
 
         self._step_num = 0
         observation = self._get_observation()
+
+        while self._mj_data.time < self._ready_time:
+            self.step(None)
+
         info = {"is_success": False}
         return observation, info
 
     def step(self, action):
         n_steps = self._sim_hz // self._control_hz
 
-        if action is not None:
-            self._latest_action = action
-            for i in range(n_steps):
-                left_Ti = sm.SE3.Trans(action[0], action[1], action[2]) * sm.SE3(sm.SO3(self._left_T0.R))
+        # if action is not None:
+        #     self._latest_action = action
+        for i in range(n_steps):
+            if action is not None:
+                # left_Ti = sm.SE3.Trans(action[0], action[1], action[2]) * sm.SE3(sm.SO3(self._left_T0.R))
+                left_Ti = sm.SE3.Rt(R=sm.SO3.RPY(action[3], action[4], action[5]), t=action[:3])
                 self._left_robot.move_cartesian(left_Ti)
                 left_joint_position = self._left_robot.get_joint()
                 self._mj_data.ctrl[:6] = left_joint_position
                 action[6] = np.clip(action[6], 0, 1)
                 self._mj_data.ctrl[6] = action[3] * 255.0
 
-                right_Ti = sm.SE3.Trans(action[7], action[8], action[9]) * sm.SE3(sm.SO3(self._right_T0.R))
+                # right_Ti = sm.SE3.Trans(action[7], action[8], action[9]) * sm.SE3(sm.SO3(self._right_T0.R))
+                right_Ti = sm.SE3.Rt(R=sm.SO3.RPY(action[10], action[11], action[12]), t=action[7:10])
                 self._right_robot.move_cartesian(right_Ti)
                 right_joint_position = self._right_robot.get_joint()
                 self._mj_data.ctrl[7:13] = right_joint_position
                 action[13] = np.clip(action[13], 0, 1)
                 self._mj_data.ctrl[13] = action[13] * 255.0
 
-                mujoco.mj_step(self._mj_model, self._mj_data)
+            mujoco.mj_step(self._mj_model, self._mj_data)
 
         observation = self._get_observation()
         reward = 0.0
@@ -148,16 +185,16 @@ class DishWasherEnv:
 
         for i in range(len(self._left_robot_joint_names)):
             self._left_robot_q[i] = mj.get_joint_q(self._mj_model, self._mj_data, self._left_robot_joint_names[i])[0]
-        self._left_robot_T = self._left_robot.fkine(self._left_robot_q)
-        agent_pos[:3] = self._left_robot_T.t
-        agent_pos[3: 6] = self._left_robot_T.rpy()
+        left_robot_T = self._left_robot.fkine(self._left_robot_q)
+        agent_pos[:3] = left_robot_T.t
+        agent_pos[3: 6] = left_robot_T.rpy()
         agent_pos[6] = mj.get_joint_q(self._mj_model, self._mj_data, self._left_tool_joint_name)[0]
 
         for i in range(len(self._right_robot_joint_names)):
             self._right_robot_q[i] = mj.get_joint_q(self._mj_model, self._mj_data, self._right_robot_joint_names[i])[0]
-        self._right_robot_T = self._right_robot.fkine(self._right_robot_q)
-        agent_pos[7: 10] = self._right_robot_T.t
-        agent_pos[10: 13] = self._right_robot_T.rpy()
+        right_robot_T = self._right_robot.fkine(self._right_robot_q)
+        agent_pos[7: 10] = right_robot_T.t
+        agent_pos[10: 13] = right_robot_T.rpy()
         agent_pos[13] = mj.get_joint_q(self._mj_model, self._mj_data, self._right_tool_joint_name)[0]
 
         overhead_cam_id = mujoco.mj_name2id(self._mj_model, mujoco.mjtObj.mjOBJ_CAMERA, "overhead_cam")
@@ -197,28 +234,87 @@ class DishWasherEnv:
     def run(self):
         observation, info = self.reset()
 
+
+
         observations = []
         actions = []
 
+        time0 = 0.04
+        left_T0 = self._left_robot.get_cartesian()
+        left_t0 = left_T0.t
+        left_R0 = sm.SO3(left_T0.R)
+        left_t1 = left_t0.copy()
+        left_R1 = left_R0.copy()
+        left_planner0 = self._cal_planner(left_t0, left_R0, left_t1, left_R1, time0)
+
+        right_T0 = self._right_robot.get_cartesian()
+        right_t0 = right_T0.t
+        right_R0 = sm.SO3(right_T0.R)
+        right_t1 = right_t0.copy()
+        right_R1 = right_R0.copy()
+        right_planner0 = self._cal_planner(right_t0, right_R0, right_t1, right_R1, time0)
+
+        time1 = 2.0
+        left_t2 = left_t1.copy()
+        left_t2[2] += 0.05
+        left_R2 = left_R1.copy()
+        left_planner1 = self._cal_planner(left_t1, left_R1, left_t2, left_R2, time1)
+
+        right_t2 = right_t1.copy()
+        right_t2[2] -= 0.05
+        right_R2 = right_R1.copy()
+        right_planner1 = self._cal_planner(right_t1, right_R1, right_t2, right_R2, time1)
+
+        time_array = np.array([time0, time1])
+        left_planner_array = [left_planner0, left_planner1]
+        right_planner_array = [right_planner0, right_planner1]
+
+        time_cumsum = np.cumsum(time_array)
+        left_planner_interpolate = sm.SE3()
+        right_planner_interpolate = sm.SE3()
+
         while True:
 
-            if self._step_num >= 100:
+            for j in range(len(time_cumsum)):
+                if (self._mj_data.time - self._ready_time) <= time_cumsum[j]:
+                    if j == 0:
+                        start_time = 0.0
+                    else:
+                        start_time = time_cumsum[j - 1]
+                    left_planner_interpolate = left_planner_array[j].interpolate(self._mj_data.time - self._ready_time - start_time)
+                    right_planner_interpolate = right_planner_array[j].interpolate(self._mj_data.time - self._ready_time - start_time)
+                    break
+
+            else:
                 self.close()
                 return {
                     "observations": observations,
                     "actions": actions
                 }
 
-            action = np.zeros(14)
-            action[:3] = self._left_T0.t
-            action[7:10] = self._right_T0.t
+            action = np.zeros(14, dtype=np.float32)
+            action[:3] = left_planner_interpolate.t
+            action[3:6] = left_planner_interpolate.rpy()
+            action[6] = 0.0
+            action[7:10] = right_planner_interpolate.t
+            action[10:13] = right_planner_interpolate.rpy()
+            action[13] = 0.0
 
             observations.append(observation)
-            actions.append(action.copy)
+            actions.append(action)
 
             observation, _, _, _, info = self.step(action)
 
             self.render()
+
+    def _cal_planner(self, t0, R0, t1, R1, time):
+        position_parameter = LinePositionParameter(t0, t1)
+        attitude_parameter = OneAttitudeParameter(R0, R1)
+        cartesian_parameter = CartesianParameter(position_parameter, attitude_parameter)
+        velocity_parameter = QuinticVelocityParameter(time)
+        trajectory_parameter = TrajectoryParameter(cartesian_parameter, velocity_parameter)
+        trajectory_planner = TrajectoryPlanner(trajectory_parameter)
+        return trajectory_planner
 
 
 if __name__ == '__main__':
