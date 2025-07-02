@@ -147,7 +147,7 @@
     </default>
   </default>
   <worldbody>
-    <body name="dishwasher_body" pos="0.0 0.8 -0.2" childclass="dishwasher">
+    <body name="dishwasher_body" pos="0.0 0.9 -0.26" childclass="dishwasher">
       <geom material="body" mesh="dish_washer_body_001" class="visual" euler="1.5708 0 0"/>
       <geom pos="0 -0.258 0.129" size="0.3 0.258 0.129" type="box" class="collision"/>
       <geom pos="0 -0.278 0.269" size="0.3 0.278 0.011" type="box" class="collision"/>
