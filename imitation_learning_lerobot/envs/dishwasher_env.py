@@ -305,7 +305,7 @@ class DishWasherEnv:
         left_planner4 = self._cal_planner(left_t4, left_R4, left_t5, left_R5, time4)
 
         right_t5 = right_t4.copy()
-        right_t5[2] = 0.5
+        right_t5[2] += 0.2
         right_R5 = right_R4.copy()
         right_planner4 = self._cal_planner(right_t4, right_R4, right_t5, right_R5, time4)
 
@@ -314,7 +314,7 @@ class DishWasherEnv:
         left_R6 = left_R5.copy()
         left_planner5 = self._cal_planner(left_t5, left_R5, left_t6, left_R6, time5)
 
-        right_t6 = right_t5.copy()
+        right_t6 = np.array([0.15, 0.0, 0.55])
         right_R6 = sm.SO3.TwoVectors(x=np.array([-1.0, 0.0, -0.4]), z=np.array([0.0, -1.0, 0.0]))
         right_planner5 = self._cal_planner(right_t5, right_R5, right_t6, right_R6, time5)
 
@@ -328,21 +328,42 @@ class DishWasherEnv:
         right_R7 = right_R6.copy()
         right_planner6 = self._cal_planner(right_t6, right_R6, right_t7, right_R7, time6)
 
-        time7 = 2.0
+        time7 = 5.0
         left_t8 = left_t7.copy()
         left_R8 = left_R7.copy()
         left_planner7 = self._cal_planner(left_t7, left_R7, left_t8, left_R8, time7)
 
         right_t8 = right_t7.copy()
-        right_t8[2] -= 0.2
-        right_R8 = right_R7.copy()
+        right_t8[2] = 0.20
+        right_R8 = right_R7.copy() * sm.SO3.Rz(-np.pi / 24)
         right_planner7 = self._cal_planner(right_t7, right_R7, right_t8, right_R8, time7)
 
-        time_array = np.array([time0, time1, time2, time3, time4, time5, time6, time7])
+        time8 = 1.0
+        left_t9 = left_t8.copy()
+        left_R9 = left_R8.copy()
+        left_planner8 = self._cal_planner(left_t8, left_R8, left_t9, left_R9, time8)
+
+        right_t9 = right_t8.copy()
+        right_R9 = right_R8.copy()
+        right_planner8 = self._cal_planner(right_t8, right_R8, right_t9, right_R9, time8)
+
+        time9 = 1.0
+        left_t10 = left_t9.copy()
+        left_R10 = left_R9.copy()
+        left_planner9 = self._cal_planner(left_t9, left_R9, left_t10, left_R10, time9)
+
+        right_t10 = right_t9.copy() - 0.1 * right_R9.n
+        right_t10[2] += 0.15
+        right_R10 = right_R9.copy()
+        right_planner9 = self._cal_planner(right_t9, right_R9, right_t10, right_R10, time9)
+
+        time_array = np.array([time0, time1, time2, time3, time4, time5, time6, time7, time8, time9])
         left_planner_array = [left_planner0, left_planner1, left_planner2, left_planner3,
-                              left_planner4, left_planner5, left_planner6, left_planner7]
+                              left_planner4, left_planner5, left_planner6, left_planner7,
+                              left_planner8, left_planner9]
         right_planner_array = [right_planner0, right_planner1, right_planner2, right_planner3,
-                               right_planner4, right_planner5, right_planner6, right_planner7]
+                               right_planner4, right_planner5, right_planner6, right_planner7,
+                               right_planner8, right_planner9]
 
         time_cumsum = np.cumsum(time_array)
         left_planner_interpolate = sm.SE3()
@@ -375,9 +396,12 @@ class DishWasherEnv:
             if self._mj_data.time - self._ready_time <= time_cumsum[2]:
                 action[6] = 1.0
                 action[13] = 1.0
-            else:
+            elif self._mj_data.time - self._ready_time <= time_cumsum[7]:
                 action[6] = 0.0
                 action[13] = 0.0
+            else:
+                action[6] = 1.0
+                action[13] = 1.0
             action[7:10] = right_planner_interpolate.t
             action[10:13] = right_planner_interpolate.rpy()
 
