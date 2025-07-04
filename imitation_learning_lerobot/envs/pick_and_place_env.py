@@ -59,7 +59,7 @@ class PickAndPlaceEnv:
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._robot_q[i]) for i, jn in
          enumerate(self._ur5e_joint_names)]
         mujoco.mj_forward(self._mj_model, self._mj_data)
-        mj.attach(self._mj_model, self._mj_data, "attach", "2f85", sm.SE3())
+        mj.attach(self._mj_model, self._mj_data, "attach", "2f85", self._robot.fkine(self._robot_q))
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
         self._robot.set_tool(sm.SE3.Trans(0.0, 0.0, 0.15))
