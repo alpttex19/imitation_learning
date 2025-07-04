@@ -312,7 +312,7 @@ class DishWasherEnv:
         right_planner5 = self._cal_planner(right_t5, right_R5, right_t6, right_R6, time5)
 
         time6 = 2.0
-        left_t7 = np.array([-0.1, 0.125, 0.50])
+        left_t7 = np.array([-0.1, 0.120, 0.50])
         left_R7 = left_R6.copy()
         left_planner6 = self._cal_planner(left_t6, left_R6, left_t7, left_R7, time6)
 
