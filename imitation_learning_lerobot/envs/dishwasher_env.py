@@ -99,11 +99,9 @@ class DishWasherEnv:
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
         px_dish_drainer = np.random.uniform(-0.15, -0.05)
-        px_dish_drainer = -0.05
         py_dish_drainer = -0.2
         pz_dish_drainer = 0.0
         rz_dish_drainer = np.random.uniform(-1.0, 0.2)
-        rz_dish_drainer = -1.0
         T_dish_drainer = sm.SE3.Rt(R=sm.SO3.Rz(rz_dish_drainer),
                                    t=np.array([px_dish_drainer, py_dish_drainer, pz_dish_drainer]))
 
@@ -118,8 +116,7 @@ class DishWasherEnv:
         px_plate = px_dish_drainer
         py_plate = py_dish_drainer
         pz_plate = 0.15
-        # randint_index_plate = np.random.randint(-3, 3)
-        randint_index_plate = 2
+        randint_index_plate = np.random.randint(-3, 3)
         T_plate = sm.SE3.Rt(R=sm.SO3.RPY(-np.pi / 2, 0.0, rz_dish_drainer),
                             t=np.array([px_plate, py_plate, pz_plate]) + (0.042 * randint_index_plate + 0.015) * T_dish_drainer.o)
         mj.set_free_joint_pose(self._mj_model, self._mj_data, "plate_free_joint", T_plate)
@@ -306,7 +303,7 @@ class DishWasherEnv:
         right_planner4 = self._cal_planner(right_t4, right_R4, right_t5, right_R5, time4)
 
         time5 = 2.0
-        left_t6 = np.array([-0.2, 0.125, 0.55])
+        left_t6 = np.array([-0.2, 0.0, 0.55])
         left_R6 = sm.SO3.TwoVectors(x=np.array([1.0, 0.0, -0.4]), z=np.array([0.0, -1.0, 0.0]))
         left_planner5 = self._cal_planner(left_t5, left_R5, left_t6, left_R6, time5)
 
@@ -315,8 +312,8 @@ class DishWasherEnv:
         right_planner5 = self._cal_planner(right_t5, right_R5, right_t6, right_R6, time5)
 
         time6 = 2.0
-        left_t7 = np.array([-0.1, 0.125, 0.36])
-        left_R7 = sm.SO3.TwoVectors(x=np.array([0.0, 0.0, -1.0]), z=np.array([0.0, -1.0, 0.0]))
+        left_t7 = np.array([-0.1, 0.125, 0.50])
+        left_R7 = left_R6.copy()
         left_planner6 = self._cal_planner(left_t6, left_R6, left_t7, left_R7, time6)
 
         right_t7 = right_t6.copy()
@@ -326,16 +323,17 @@ class DishWasherEnv:
 
         time7 = 2.0
         left_t8 = left_t7.copy()
-        left_t8[2] = 0.21
-        left_R8 = left_R7.copy()
+        left_t8[2] = 0.35
+        left_R8 = sm.SO3.TwoVectors(x=np.array([0.0, 0.0, -1.0]), z=np.array([0.0, -1.0, 0.0]))
         left_planner7 = self._cal_planner(left_t7, left_R7, left_t8, left_R8, time7)
 
         right_t8 = right_t7.copy()
         right_R8 = right_R7.copy()
         right_planner7 = self._cal_planner(right_t7, right_R7, right_t8, right_R8, time7)
 
-        time8 = 1.0
+        time8 = 2.0
         left_t9 = left_t8.copy()
+        left_t9[2] = 0.21
         left_R9 = left_R8.copy()
         left_planner8 = self._cal_planner(left_t8, left_R8, left_t9, left_R9, time8)
 
@@ -344,7 +342,7 @@ class DishWasherEnv:
         right_planner8 = self._cal_planner(right_t8, right_R8, right_t9, right_R9, time8)
 
         time9 = 1.0
-        left_t10 = left_t9.copy() - 0.1 * left_R9.n
+        left_t10 = left_t9.copy()
         left_R10 = left_R9.copy()
         left_planner9 = self._cal_planner(left_t9, left_R9, left_t10, left_R10, time9)
 
@@ -352,22 +350,22 @@ class DishWasherEnv:
         right_R10 = right_R9.copy()
         right_planner9 = self._cal_planner(right_t9, right_R9, right_t10, right_R10, time9)
 
-        time10 = 2.0
-        left_t11 = left_t10.copy()
+        time10 = 1.0
+        left_t11 = left_t10.copy() - 0.1 * left_R10.n
         left_R11 = left_R10.copy()
         left_planner10 = self._cal_planner(left_t10, left_R10, left_t11, left_R11, time10)
 
         right_t11 = right_t10.copy()
-        right_t11[1] += 0.35
         right_R11 = right_R10.copy()
         right_planner10 = self._cal_planner(right_t10, right_R10, right_t11, right_R11, time10)
 
-        time11 = 1.0
+        time11 = 2.0
         left_t12 = left_t11.copy()
         left_R12 = left_R11.copy()
         left_planner11 = self._cal_planner(left_t11, left_R11, left_t12, left_R12, time11)
 
         right_t12 = right_t11.copy()
+        right_t12[1] += 0.35
         right_R12 = right_R11.copy()
         right_planner11 = self._cal_planner(right_t11, right_R11, right_t12, right_R12, time11)
 
@@ -377,29 +375,38 @@ class DishWasherEnv:
         left_planner12 = self._cal_planner(left_t12, left_R12, left_t13, left_R13, time12)
 
         right_t13 = right_t12.copy()
-        right_t13[2] += 0.1
         right_R13 = right_R12.copy()
         right_planner12 = self._cal_planner(right_t12, right_R12, right_t13, right_R13, time12)
 
-        time13 = 2.0
-        left_t14 = self._left_T0.t.copy()
-        left_R14 = sm.SO3(self._left_T0)
+        time13 = 1.0
+        left_t14 = left_t13.copy()
+        left_R14 = left_R13.copy()
         left_planner13 = self._cal_planner(left_t13, left_R13, left_t14, left_R14, time13)
 
-        right_t14 = self._right_T0.t.copy()
-        right_R14 = sm.SO3(self._right_T0)
+        right_t14 = right_t13.copy()
+        right_t14[2] += 0.125
+        right_R14 = right_R13.copy()
         right_planner13 = self._cal_planner(right_t13, right_R13, right_t14, right_R14, time13)
 
+        time14 = 2.0
+        left_t15 = self._left_T0.t.copy()
+        left_R15 = sm.SO3(self._left_T0)
+        left_planner14 = self._cal_planner(left_t14, left_R14, left_t15, left_R15, time14)
+
+        right_t15 = self._right_T0.t.copy()
+        right_R15 = sm.SO3(self._right_T0)
+        right_planner14 = self._cal_planner(right_t14, right_R14, right_t15, right_R15, time14)
+
         time_array = np.array([time0, time1, time2, time3, time4, time5, time6, time7, time8, time9,
-                               time10, time11, time12, time13])
+                               time10, time11, time12, time13, time14])
         left_planner_array = [left_planner0, left_planner1, left_planner2, left_planner3,
                               left_planner4, left_planner5, left_planner6, left_planner7,
                               left_planner8, left_planner9, left_planner10, left_planner11,
-                              left_planner12, left_planner13]
+                              left_planner12, left_planner13, left_planner14]
         right_planner_array = [right_planner0, right_planner1, right_planner2, right_planner3,
                                right_planner4, right_planner5, right_planner6, right_planner7,
                                right_planner8, right_planner9, right_planner10, right_planner11,
-                               right_planner12, right_planner13]
+                               right_planner12, right_planner13, right_planner14]
 
         time_cumsum = np.cumsum(time_array)
         left_planner_interpolate = sm.SE3()
@@ -427,21 +434,20 @@ class DishWasherEnv:
                     "actions": actions
                 }
 
-            # action = np.zeros(14, dtype=np.float32)
             action[:3] = left_planner_interpolate.t
             action[3:6] = left_planner_interpolate.rpy()
             if (self._mj_data.time - self._ready_time) <= time_cumsum[2]:
                 action[6] = 1.0
                 action[13] = 1.0
-            elif (self._mj_data.time - self._ready_time) <= time_cumsum[7]:
-                action[6] = np.maximum(action[6] - 1.0 / time8 / self._control_hz, 0.0)
-                action[13] = np.maximum(action[13] - 1.0 / time8 / self._control_hz, 0.0)
-            elif (self._mj_data.time - self._ready_time) <= time_cumsum[10]:
-                action[6] = np.minimum(action[6] + 1.0 / time11 / self._control_hz, 1.0)
+            elif (self._mj_data.time - self._ready_time) <= time_cumsum[8]:
+                action[6] = np.maximum(action[6] - 1.0 / time9 / self._control_hz, 0.0)
+                action[13] = np.maximum(action[13] - 1.0 / time9 / self._control_hz, 0.0)
+            elif (self._mj_data.time - self._ready_time) <= time_cumsum[11]:
+                action[6] = np.minimum(action[6] + 1.0 / time12 / self._control_hz, 1.0)
                 action[13] = 0.0
             else:
-                action[6] = np.minimum(action[6] + 1.0 / time12 / self._control_hz, 1.0)
-                action[13] = np.minimum(action[13] + 1.0 / time12 / self._control_hz, 1.0)
+                action[6] = np.minimum(action[6] + 1.0 / time13 / self._control_hz, 1.0)
+                action[13] = np.minimum(action[13] + 1.0 / time13 / self._control_hz, 1.0)
 
             action[7:10] = right_planner_interpolate.t
             action[10:13] = right_planner_interpolate.rpy()
