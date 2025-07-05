@@ -7,6 +7,8 @@ import spatialmath as sm
 import mujoco
 import mujoco.viewer
 
+from .env import Env
+
 from ..arm.robot import Robot, VX300S
 from ..arm.motion_planning import LinePositionParameter, OneAttitudeParameter, \
     CartesianParameter, \
@@ -14,12 +16,26 @@ from ..arm.motion_planning import LinePositionParameter, OneAttitudeParameter, \
 from ..utils import mj
 
 
-class DishWasherEnv:
+class DishWasherEnv(Env):
+    _name = "dishwasher"
+    _robot_type = "ALOHA"
+    _height = 240
+    _width = 320
+    _states = [
+        "left_px", "left_py", "left_pz", "left_rx", "left_ry", "left_rz", "left_gripper",
+        "right_px", "right_py", "right_pz", "right_rx", "right_ry", "right_rz", "right_gripper"
+    ]
+    _cameras = [
+        "overhead_cam",
+        "wrist_cam_left",
+        "wrist_cam_right"
+    ]
+
     def __init__(self, render_mode: str = "rgb_array"):
         super().__init__()
 
         self._sim_hz = 500
-        self._control_hz = 25
+        # self._control_hz = 25
 
         self._render_mode = render_mode
 
@@ -44,8 +60,8 @@ class DishWasherEnv:
         self._right_T0 = sm.SE3()
         self._right_tool_joint_name = "right/right_finger"
 
-        self._height = 480
-        self._width = 640
+        # self._height = 360
+        # self._width = 480
         self._mj_renderer: mujoco.Renderer = None
         self._mj_viewer: mujoco.viewer.Handle = None
 
@@ -118,7 +134,8 @@ class DishWasherEnv:
         pz_plate = 0.15
         randint_index_plate = np.random.randint(-3, 3)
         T_plate = sm.SE3.Rt(R=sm.SO3.RPY(-np.pi / 2, 0.0, rz_dish_drainer),
-                            t=np.array([px_plate, py_plate, pz_plate]) + (0.042 * randint_index_plate + 0.015) * T_dish_drainer.o)
+                            t=np.array([px_plate, py_plate, pz_plate]) + (
+                                    0.042 * randint_index_plate + 0.015) * T_dish_drainer.o)
         mj.set_free_joint_pose(self._mj_model, self._mj_data, "plate_free_joint", T_plate)
         mujoco.mj_forward(self._mj_model, self._mj_data)
 

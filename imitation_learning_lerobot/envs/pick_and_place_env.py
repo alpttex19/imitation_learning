@@ -7,13 +7,17 @@ import spatialmath as sm
 import mujoco
 import mujoco.viewer
 
+from .env import Env
+
 from ..arm.robot import Robot, UR5e
 from ..arm.motion_planning import LinePositionParameter, OneAttitudeParameter, CartesianParameter, \
     QuinticVelocityParameter, TrajectoryParameter, TrajectoryPlanner
 from ..utils import mj
 
 
-class PickAndPlaceEnv:
+class PickAndPlaceEnv(Env):
+    _name = "pick_and_place"
+
     def __init__(self, render_mode: str = "rgb_array"):
         super().__init__()
 

@@ -1,1 +1,2 @@
 from .pick_and_place_config import PickAndPlaceEnvConfig
+from .dishwasher_config import DishwasherEnvConfig
