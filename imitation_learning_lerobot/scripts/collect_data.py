@@ -1,8 +1,10 @@
+from typing import Type
 from pathlib import Path
+import argparse
 import dataclasses
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 
-from imitation_learning_lerobot.envs import PickAndPlaceEnv
+from imitation_learning_lerobot.envs import Env, EnvFactor
 
 
 @dataclasses.dataclass(frozen=True)
@@ -14,52 +16,63 @@ class DatasetConfig:
     video_backend: str | None = None
 
 
-def create_empty_dataset():
-    features = {"observation.state": {
-        "dtype": "float32",
-        "shape": (4,),
-        "names": {
-            "position": ["px",
-                         "py",
-                         "pz",
-                         "gripper"],
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        '--env.type',
+        type=str,
+        dest='env_type',
+        required=True,
+        help='env type'
+    )
+
+    parser.add_argument(
+        '--episode',
+        type=int,
+        default=100,
+        help='episode'
+    )
+
+    return parser.parse_args()
+
+
+def create_empty_dataset(env_cls: Type[Env]):
+    features = {
+        "observation.state": {
+            "dtype": "float32",
+            "shape": (len(env_cls.states),),
+            "names": {
+                "position": env_cls.states,
+            }
+        }, "action": {
+            "dtype": "float32",
+            "shape": (len(env_cls.states),),
+            "names": {
+                "position": env_cls.states,
+            }
         }
-    }, "action": {
-        "dtype": "float32",
-        "shape": (4,),
-        "names": {
-            "position": ["px",
-                         "py",
-                         "pz",
-                         "gripper"],
+    }
+
+    for camera in env_cls.cameras:
+        features[f"observation.images.{camera}"] = {
+            "dtype": "video",
+            "shape": (env_cls.height, env_cls.width, 3),
+            "names": [
+                "height",
+                "width",
+                "channel"
+            ]
         }
-    }, "observation.images.top": {
-        "dtype": "video",
-        "shape": (480, 640, 3),
-        "names": [
-            "height",
-            "width",
-            "channel"
-        ]
-    }, "observation.images.hand": {
-        "dtype": "video",
-        "shape": (480, 640, 3),
-        "names": [
-            "height",
-            "width",
-            "channel"
-        ]
-    }
-    }
 
     config = DatasetConfig()
 
     dataset = LeRobotDataset.create(
-        repo_id="pick_and_place",
-        fps=25,
+        repo_id=env_cls.name,
+        fps=env_cls.control_hz,
         features=features,
-        root=Path(__file__).parent.parent.parent / Path("outputs/datasets/pick_and_place"),
-        robot_type="UR5e",
+        root=Path(__file__).parent.parent.parent / Path("outputs/datasets") / Path(env_cls.name),
+        robot_type=env_cls.robot_type,
         use_videos=config.use_videos,
         tolerance_s=config.tolerance_s,
         image_writer_processes=config.image_writer_processes,
@@ -70,11 +83,9 @@ def create_empty_dataset():
     return dataset
 
 
-def populate_dataset(dataset: LeRobotDataset):
-    episode = 100
-
-    env = PickAndPlaceEnv()
-    task = "pick_and_place"
+def populate_dataset(episode: int, env_cls: Type[Env], dataset: LeRobotDataset):
+    env = env_cls()
+    task = env.name
     for i in range(episode):
         data = env.run()
 
@@ -84,9 +95,11 @@ def populate_dataset(dataset: LeRobotDataset):
             frame = {
                 "observation.state": data["observations"][j]["agent_pos"],
                 "action": data["actions"][j],
-                "observation.images.top": data["observations"][j]["pixels"]["top"],
-                "observation.images.hand": data["observations"][j]["pixels"]["hand"]
             }
+
+            for camera in env_cls.cameras:
+                frame[f"observation.images.{camera}"] = data["observations"][j]["pixels"][camera]
+
             dataset.add_frame(frame, task=task)
         dataset.save_episode()
 
@@ -94,9 +107,14 @@ def populate_dataset(dataset: LeRobotDataset):
 
 
 def main():
-    dataset = create_empty_dataset()
+    args = parse_args()
 
-    populate_dataset(dataset)
+    env_type = args.env_type
+    env_cls = EnvFactor.get_strategies(env_type)
+
+    dataset = create_empty_dataset(env_cls)
+
+    populate_dataset(args.episode, env_cls, dataset)
 
 
 if __name__ == '__main__':

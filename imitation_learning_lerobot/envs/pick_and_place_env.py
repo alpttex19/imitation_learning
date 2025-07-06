@@ -17,6 +17,17 @@ from ..utils import mj
 
 class PickAndPlaceEnv(Env):
     _name = "pick_and_place"
+    _robot_type = "UR5e"
+    _states = [
+        "px",
+        "py",
+        "pz",
+        "gripper"
+    ]
+    _cameras = [
+        "top",
+        "hand"
+    ]
 
     def __init__(self, render_mode: str = "rgb_array"):
         super().__init__()

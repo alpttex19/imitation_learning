@@ -35,7 +35,6 @@ class DishWasherEnv(Env):
         super().__init__()
 
         self._sim_hz = 500
-        # self._control_hz = 25
 
         self._render_mode = render_mode
 
@@ -60,8 +59,6 @@ class DishWasherEnv(Env):
         self._right_T0 = sm.SE3()
         self._right_tool_joint_name = "right/right_finger"
 
-        # self._height = 360
-        # self._width = 480
         self._mj_renderer: mujoco.Renderer = None
         self._mj_viewer: mujoco.viewer.Handle = None
 
@@ -157,14 +154,14 @@ class DishWasherEnv(Env):
 
         for i in range(n_steps):
             if action is not None:
-                left_Ti = sm.SE3.Rt(R=sm.SO3.RPY(action[3], action[4], action[5]), t=action[:3])
+                left_Ti = self._left_T0 * sm.SE3.Rt(R=sm.SO3.RPY(action[3], action[4], action[5]), t=action[:3])
                 self._left_robot.move_cartesian(left_Ti)
                 left_joint_position = self._left_robot.get_joint()
                 self._mj_data.ctrl[:6] = left_joint_position
                 action[6] = np.clip(action[6], 0, 1)
                 self._mj_data.ctrl[6] = action[6] * (0.037 - 0.002) + 0.002
 
-                right_Ti = sm.SE3.Rt(R=sm.SO3.RPY(action[10], action[11], action[12]), t=action[7:10])
+                right_Ti = self._right_T0 * sm.SE3.Rt(R=sm.SO3.RPY(action[10], action[11], action[12]), t=action[7:10])
                 self._right_robot.move_cartesian(right_Ti)
                 right_joint_position = self._right_robot.get_joint()
                 self._mj_data.ctrl[7:13] = right_joint_position
@@ -206,14 +203,14 @@ class DishWasherEnv(Env):
 
         for i in range(len(self._left_robot_joint_names)):
             self._left_robot_q[i] = mj.get_joint_q(self._mj_model, self._mj_data, self._left_robot_joint_names[i])[0]
-        left_robot_T = self._left_robot.fkine(self._left_robot_q)
+        left_robot_T = self._left_T0.inv() * self._left_robot.fkine(self._left_robot_q)
         agent_pos[:3] = left_robot_T.t
         agent_pos[3: 6] = left_robot_T.rpy()
         agent_pos[6] = mj.get_joint_q(self._mj_model, self._mj_data, self._left_tool_joint_name)[0]
 
         for i in range(len(self._right_robot_joint_names)):
             self._right_robot_q[i] = mj.get_joint_q(self._mj_model, self._mj_data, self._right_robot_joint_names[i])[0]
-        right_robot_T = self._right_robot.fkine(self._right_robot_q)
+        right_robot_T = self._right_T0.inv() * self._right_robot.fkine(self._right_robot_q)
         agent_pos[7: 10] = right_robot_T.t
         agent_pos[10: 13] = right_robot_T.rpy()
         agent_pos[13] = mj.get_joint_q(self._mj_model, self._mj_data, self._right_tool_joint_name)[0]
@@ -249,7 +246,6 @@ class DishWasherEnv(Env):
             },
             'agent_pos': agent_pos
         }
-        # self._render_cache = image_top
         return obs
 
     def run(self):
@@ -451,8 +447,13 @@ class DishWasherEnv(Env):
                     "actions": actions
                 }
 
-            action[:3] = left_planner_interpolate.t
-            action[3:6] = left_planner_interpolate.rpy()
+            local_left_planner_interpolate: sm.SE3 = self._left_T0.inv() * left_planner_interpolate
+            local_right_planner_interpolate: sm.SE3 = self._right_T0.inv() * right_planner_interpolate
+
+            action[:3] = local_left_planner_interpolate.t
+            action[3:6] = local_left_planner_interpolate.rpy()
+            action[7:10] = local_right_planner_interpolate.t
+            action[10:13] = local_right_planner_interpolate.rpy()
             if (self._mj_data.time - self._ready_time) <= time_cumsum[2]:
                 action[6] = 1.0
                 action[13] = 1.0
@@ -465,9 +466,6 @@ class DishWasherEnv(Env):
             else:
                 action[6] = np.minimum(action[6] + 1.0 / time13 / self._control_hz, 1.0)
                 action[13] = np.minimum(action[13] + 1.0 / time13 / self._control_hz, 1.0)
-
-            action[7:10] = right_planner_interpolate.t
-            action[10:13] = right_planner_interpolate.rpy()
 
             observations.append(observation)
             actions.append(action.copy())
