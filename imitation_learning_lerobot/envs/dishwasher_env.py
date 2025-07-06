@@ -16,7 +16,7 @@ from ..arm.motion_planning import LinePositionParameter, OneAttitudeParameter, \
 from ..utils import mj
 
 
-class DishWasherEnv(Env):
+class DishwasherEnv(Env):
     _name = "dishwasher"
     _robot_type = "ALOHA"
     _height = 240
@@ -485,5 +485,5 @@ class DishWasherEnv(Env):
 
 
 if __name__ == '__main__':
-    env = DishWasherEnv(render_mode="human")
+    env = DishwasherEnv(render_mode="human")
     env.run()

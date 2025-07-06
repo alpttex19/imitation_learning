@@ -1,5 +1,5 @@
-from imitation_learning_lerobot.envs import DishWasherEnv
+from imitation_learning_lerobot.envs import DishwasherEnv
 
 if __name__ == '__main__':
-    env = DishWasherEnv(render_mode="human")
+    env = DishwasherEnv(render_mode="human")
     env.run()
