@@ -8,5 +8,3 @@ python ./lerobot/lerobot/scripts/train.py \
   --log_freq=200 \
   --save_freq=2000 \
   --batch_size=16 \
-  --resume=true \
-  --config_path=outputs/models/act_dishwasher/checkpoints/last/pretrained_model/train_config.json
