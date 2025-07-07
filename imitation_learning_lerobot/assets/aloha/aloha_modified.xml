@@ -6,18 +6,18 @@
   <asset>
     <material name="black" rgba="0.15 0.15 0.15 1"/>
 
-    <mesh file="./assets/vx300s_1_base.stl" scale="0.001 0.001 0.001"/>
-    <mesh file="./assets/vx300s_2_shoulder.stl" scale="0.001 0.001 0.001"/>
-    <mesh file="./assets/vx300s_3_upper_arm.stl" scale="0.001 0.001 0.001"/>
-    <mesh file="./assets/vx300s_4_upper_forearm.stl" scale="0.001 0.001 0.001"/>
-    <mesh file="./assets/vx300s_5_lower_forearm.stl" scale="0.001 0.001 0.001"/>
-    <mesh file="./assets/vx300s_6_wrist.stl" scale="0.001 0.001 0.001"/>
-    <mesh file="./assets/vx300s_7_gripper_prop.stl"/>
-    <mesh file="./assets/vx300s_7_gripper_bar.stl"/>
-    <mesh file="./assets/vx300s_7_gripper_wrist_mount.stl"/>
-    <mesh file="./assets/vx300s_8_custom_finger_left.stl"/>
-    <mesh file="./assets/vx300s_8_custom_finger_right.stl"/>
-    <mesh file="./assets/d405_solid.stl"/>
+    <mesh file="../aloha/assets/vx300s_1_base.stl" scale="0.001 0.001 0.001"/>
+    <mesh file="../aloha/assets/vx300s_2_shoulder.stl" scale="0.001 0.001 0.001"/>
+    <mesh file="../aloha/assets/vx300s_3_upper_arm.stl" scale="0.001 0.001 0.001"/>
+    <mesh file="../aloha/assets/vx300s_4_upper_forearm.stl" scale="0.001 0.001 0.001"/>
+    <mesh file="../aloha/assets/vx300s_5_lower_forearm.stl" scale="0.001 0.001 0.001"/>
+    <mesh file="../aloha/assets/vx300s_6_wrist.stl" scale="0.001 0.001 0.001"/>
+    <mesh file="../aloha/assets/vx300s_7_gripper_prop.stl"/>
+    <mesh file="../aloha/assets/vx300s_7_gripper_bar.stl"/>
+    <mesh file="../aloha/assets/vx300s_7_gripper_wrist_mount.stl"/>
+    <mesh file="../aloha/assets/vx300s_8_custom_finger_left.stl"/>
+    <mesh file="../aloha/assets/vx300s_8_custom_finger_right.stl"/>
+    <mesh file="../aloha/assets/d405_solid.stl"/>
   </asset>
 
   <default>
@@ -72,12 +72,12 @@
           where the gripper is actuated to its fully closed and fully open positions. Therefore the
           control range represents limits enforced by _software_ on the real robot.
         -->
-        <position ctrlrange="0.002 0.037" kp="2000" kv="124"/>
+        <position ctrlrange="0.002 0.06" kp="2000" kv="124"/>
         <default class="left_finger">
-          <joint range="0 0.041" axis="0 0 -1"/>
+          <joint range="0 0.06" axis="0 0 -1"/>
         </default>
         <default class="right_finger">
-          <joint range="0 0.041" axis="0 0 -1"/>
+          <joint range="0 0.06" axis="0 0 -1"/>
         </default>
       </default>
       <default class="aloha_visual">
@@ -285,7 +285,7 @@
     <joint joint1="right/left_finger" joint2="right/right_finger" polycoef="0 1 0 0 0"/>
   </equality>
 
-  <include file="joint_position_actuators.xml"/>
+  <include file="../aloha/joint_position_actuators.xml"/>
 <!--    <include file="filtered_cartesian_actuators.xml"/>-->
 <!--  <include file="keyframe_ctrl.xml"/>-->
 </mujoco>

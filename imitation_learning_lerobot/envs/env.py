@@ -13,6 +13,27 @@ class Env(abc.ABC):
     def __init__(self, render_mode: str = "rgb_array"):
         pass
 
+    def reset(self):
+        pass
+
+    def step(self, action):
+        pass
+
+    def render(self):
+        pass
+
+    def close(self):
+        pass
+
+    def seed(self):
+        pass
+
+    def _get_observation(self):
+        pass
+
+    def run(self):
+        pass
+
     @classmethod
     @property
     def name(cls) -> str:
