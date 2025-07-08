@@ -5,7 +5,7 @@
   <include file="../props/mug/mug.xml" />
   <include file="../props/wine/wine.xml" />
   <include file="../props/beer/beer.xml" />
-  <include file="../props/board/board.xml" />
+<!--  <include file="../props/board/board.xml" />-->
 
   <statistic center="0 -0.1 0.2" extent="0.6" meansize="0.05"/>
 
@@ -92,7 +92,4 @@
     <geom class="frame" pos="0 -0.391 -0.01" quat="0 0 0 1" mesh="wormseye_mount"/>
   </worldbody>
 
-  <equality>
-    <weld name="board_attach" body1="world" body2="board" active="false" />
-  </equality>
 </mujoco>
