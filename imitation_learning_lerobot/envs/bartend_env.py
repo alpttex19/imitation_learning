@@ -138,8 +138,8 @@ class BartendEnv(Env):
         T_beer = sm.SE3.Rt(R=sm.SO3.Rz(rz_beer), t=np.array([px_beer, py_beer, pz_beer]))
         mj.set_free_joint_pose(self._mj_model, self._mj_data, "beer_free_joint", T_beer)
 
-        px_wine = 0.1
-        py_wine = 0.1
+        px_wine = -0.1
+        py_wine = -0.2
         pz_wine = 0.02
         rz_wine = 0.0
         T_wine = sm.SE3.Rt(R=sm.SO3.Rz(rz_wine), t=np.array([px_wine, py_wine, pz_wine]))
@@ -236,16 +236,20 @@ class BartendEnv(Env):
         T_mug = mj.get_body_pose(self._mj_model, self._mj_data, "mug")
         t_mug = T_mug.t
 
+        T_beer = mj.get_body_pose(self._mj_model, self._mj_data, "beer")
+        t_beer = T_beer.t
+
         time1 = 2.0
-        left_R2 = sm.SO3.TwoVectors(x=t_mug - t_left_base_link, z=np.array([0.0, 0.0, 1.0]))
+        n_left_R2 = t_mug - t_left_base_link
+        n_left_R2[2] = 0.0
+        left_R2 = sm.SO3.TwoVectors(x=n_left_R2, z=np.array([0.0, 0.0, 1.0]))
         left_t2 = t_mug - 0.08 * left_R2.n
         left_t2[2] = 0.07
         left_planner1 = self._cal_planner(left_t1, left_R1, left_t2, left_R2, time1)
 
-        T_beer = mj.get_body_pose(self._mj_model, self._mj_data, "beer")
-        t_beer = T_beer.t
-
-        right_R2 = sm.SO3.TwoVectors(x=t_beer - t_right_base_link, z=np.array([0.0, 0.0, 1.0]))
+        n_right_R2 = t_beer - t_right_base_link
+        n_right_R2[2] = 0.0
+        right_R2 = sm.SO3.TwoVectors(x=n_right_R2, z=np.array([0.0, 0.0, 1.0]))
         right_t2 = t_beer - 0.08 * right_R2.n
         right_t2[2] = 0.07
         right_planner1 = self._cal_planner(right_t1, right_R1, right_t2, right_R2, time1)
@@ -288,7 +292,7 @@ class BartendEnv(Env):
         left_planner5 = self._cal_planner(left_t5, left_R5, left_t6, left_R6, time5)
 
         right_t6 = right_t5.copy()
-        right_t6[:2] = [-0.04, t_right_base_link[1] - 0.15]
+        right_t6[:2] = [-0.04, t_right_base_link[1] + 0.15]
         right_R6 = sm.SO3.Rz(np.pi)
         right_planner5 = self._cal_planner(right_t5, right_R5, right_t6, right_R6, time5)
 
@@ -308,14 +312,156 @@ class BartendEnv(Env):
         left_planner7 = self._cal_planner(left_t7, left_R7, left_t8, left_R8, time7)
 
         right_t8 = right_t7.copy()
-        right_R8 = right_R7 * sm.SO3.Rx(np.pi / 2)
+        right_R8 = right_R7 * sm.SO3.Rx(-3 * np.pi / 4)
         right_planner7 = self._cal_planner(right_t7, right_R7, right_t8, right_R8, time7)
 
-        time_array = np.array([time0, time1, time2, time3, time4, time5, time6, time7])
+        time8 = 2.0
+        left_t9 = left_t8 - 0.10 * left_R7.n
+        left_R9 = left_R8.copy()
+        left_planner8 = self._cal_planner(left_t8, left_R8, left_t9, left_R9, time8)
+
+        right_t9 = right_t8.copy()
+        right_R9 = right_R8 * sm.SO3.Rx(3 * np.pi / 4)
+        right_planner8 = self._cal_planner(right_t8, right_R8, right_t9, right_R9, time8)
+
+        T_wine = mj.get_body_pose(self._mj_model, self._mj_data, "wine")
+        t_wine = T_wine.t
+
+        time9 = 2.0
+        n_left_R10 = t_wine - t_left_base_link
+        n_left_R10[2] = 0.0
+        left_R10 = sm.SO3.TwoVectors(x=n_left_R10, z=np.array([0.0, 0.0, 1.0]))
+        left_t10 = t_wine - 0.08 * left_R10.n
+        left_t10[2] = 0.07
+        left_planner9 = self._cal_planner(left_t9, left_R9, left_t10, left_R10, time9)
+
+        right_t10 = right_t9.copy()
+        right_t10[0] = 0.05
+        right_t10[1] = -0.25
+        n_right_R10 = right_t10 - t_right_base_link
+        n_right_R10[2] = 0.0
+        right_R10 = sm.SO3.TwoVectors(x=n_right_R10, z=np.array([0.0, 0.0, 1.0]))
+        right_planner9 = self._cal_planner(right_t9, right_R9, right_t10, right_R10, time9)
+
+        time10 = 2.0
+        left_t11 = left_t10 + 0.12 * left_R10.n
+        left_R11 = left_R10.copy()
+        left_planner10 = self._cal_planner(left_t10, left_R10, left_t11, left_R11, time10)
+
+        right_t11 = right_t10.copy()
+        right_t11[2] -= 0.3
+        right_R11 = right_R10.copy()
+        right_planner10 = self._cal_planner(right_t10, right_R10, right_t11, right_R11, time10)
+
+        time11 = 1.0
+        left_t12 = left_t11.copy()
+        left_R12 = left_R11.copy()
+        left_planner11 = self._cal_planner(left_t11, left_R11, left_t12, left_R12, time11)
+
+        right_t12 = right_t11.copy()
+        right_R12 = right_R11.copy()
+        right_planner11 = self._cal_planner(right_t11, right_R11, right_t12, right_R12, time11)
+
+        time12 = 2.0
+        left_t13 = left_t12.copy()
+        left_t13[2] += 0.3
+        left_R13 = left_R12.copy()
+        left_planner12 = self._cal_planner(left_t12, left_R12, left_t13, left_R13, time12)
+
+        right_t13 = right_t12 - 0.12 * right_R12.n
+        right_R13 = right_R12.copy()
+        right_planner12 = self._cal_planner(right_t12, right_R12, right_t13, right_R13, time12)
+
+        time13 = 2.0
+        left_t14 = left_t13.copy()
+        left_t14[:2] = [0.04, t_right_base_link[1] - 0.15]
+        left_R14 = sm.SO3()
+        left_planner13 = self._cal_planner(left_t13, left_R13, left_t14, left_R14, time13)
+
+        right_t14 = right_t13.copy()
+        right_R14 = right_R13.copy()
+        right_planner13 = self._cal_planner(right_t13, right_R13, right_t14, right_R14, time13)
+
+        time14 = 2.0
+        left_t15 = left_t14.copy()
+        left_R15 = left_R14 * sm.SO3.Rx(-3 * np.pi / 4)
+        left_planner14 = self._cal_planner(left_t14, left_R14, left_t15, left_R15, time14)
+
+        right_t15 = right_t14.copy()
+        right_R15 = right_R14.copy()
+        right_planner14 = self._cal_planner(right_t14, right_R14, right_t15, right_R15, time14)
+
+        time15 = 2.0
+        left_t16 = left_t15.copy()
+        left_R16 = left_R15 * sm.SO3.Rx(3 * np.pi / 4)
+        left_planner15 = self._cal_planner(left_t15, left_R15, left_t16, left_R16, time15)
+
+        right_t16 = right_t15.copy()
+        right_R16 = right_R15.copy()
+        right_planner15 = self._cal_planner(right_t15, right_R15, right_t16, right_R16, time15)
+
+        time16 = 2.0
+        left_t17 = left_t16.copy()
+        left_t17[:2] = [-0.05, -0.25]
+        n_left_R17 = left_t17 - t_left_base_link
+        n_left_R17[2] = 0.0
+        left_R17 = sm.SO3.TwoVectors(x=n_left_R17, z=np.array([0.0, 0.0, 1.0]))
+        left_planner16 = self._cal_planner(left_t16, left_R16, left_t17, left_R17, time16)
+
+        right_t17 = right_t16.copy()
+        right_R17 = right_R16.copy()
+        right_planner16 = self._cal_planner(right_t16, right_R16, right_t17, right_R17, time16)
+
+        time17 = 2.0
+        left_t18 = left_t17.copy()
+        left_t18[2] -= 0.3
+        left_R18 = left_R17.copy()
+        left_planner17 = self._cal_planner(left_t17, left_R17, left_t18, left_R18, time17)
+
+        right_t18 = right_t17.copy()
+        right_R18 = right_R17.copy()
+        right_planner17 = self._cal_planner(right_t17, right_R17, right_t18, right_R18, time17)
+
+        time18 = 1.0
+        left_t19 = left_t18.copy()
+        left_R19 = left_R18.copy()
+        left_planner18 = self._cal_planner(left_t18, left_R18, left_t19, left_R19, time18)
+
+        right_t19 = right_t18.copy()
+        right_R19 = right_R18.copy()
+        right_planner18 = self._cal_planner(right_t18, right_R18, right_t19, right_R19, time18)
+
+        time19 = 2.0
+        left_t20 = left_t19 - 0.12 * left_R19.n
+        left_R20 = left_R19.copy()
+        left_planner19 = self._cal_planner(left_t19, left_R19, left_t20, left_R20, time19)
+
+        right_t20 = right_t19.copy()
+        right_R20 = right_R19.copy()
+        right_planner19 = self._cal_planner(right_t19, right_R19, right_t20, right_R20, time19)
+
+        time20 = 2.0
+        left_t21 = self._left_T0.t
+        left_R21 = sm.SO3(self._left_T0)
+        left_planner20 = self._cal_planner(left_t20, left_R20, left_t21, left_R21, time20)
+
+        right_t21 = self._right_T0.t
+        right_R21 = sm.SO3(self._right_T0)
+        right_planner20 = self._cal_planner(right_t20, right_R20, right_t21, right_R21, time20)
+
+        time_array = np.array([time0, time1, time2, time3, time4, time5, time6, time7, time8, time9,
+                               time10, time11, time12, time13, time14, time15, time16, time17, time18, time19,
+                               time20])
         left_planner_array = [left_planner0, left_planner1, left_planner2, left_planner3, left_planner4,
-                              left_planner5, left_planner6, left_planner7]
+                              left_planner5, left_planner6, left_planner7, left_planner8, left_planner9,
+                              left_planner10, left_planner11, left_planner12, left_planner13, left_planner14,
+                              left_planner15, left_planner16, left_planner17, left_planner18, left_planner19,
+                              left_planner20]
         right_planner_array = [right_planner0, right_planner1, right_planner2, right_planner3, right_planner4,
-                               right_planner5, right_planner6, right_planner7]
+                               right_planner5, right_planner6, right_planner7, right_planner8, right_planner9,
+                               right_planner10, right_planner11, right_planner12, right_planner13, right_planner14,
+                               right_planner15, right_planner16, right_planner17, right_planner18, right_planner19,
+                               right_planner20]
 
         time_cumsum = np.cumsum(time_array)
         left_planner_interpolate = sm.SE3()
@@ -337,6 +483,7 @@ class BartendEnv(Env):
                     break
 
             else:
+                time.sleep(100)
                 self.close()
                 return {
                     "observations": observations,
@@ -354,9 +501,18 @@ class BartendEnv(Env):
             if (self._mj_data.time - self._ready_time) <= time_cumsum[2]:
                 action[6] = 1.0
                 action[13] = 1.0
-            else:
+            elif (self._mj_data.time - self._ready_time) <= time_cumsum[6]:
                 action[6] = 0.0
                 action[13] = 0.0
+            elif (self._mj_data.time - self._ready_time) <= time_cumsum[10]:
+                action[6] = 1.0
+                action[13] = 0.0
+            elif (self._mj_data.time - self._ready_time) <= time_cumsum[17]:
+                action[6] = 0.0
+                action[13] = 1.0
+            else:
+                action[6] = 1.0
+                action[13] = 1.0
 
             observation, _, _, _, info = self.step(action)
 
