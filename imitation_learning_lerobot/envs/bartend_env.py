@@ -17,7 +17,7 @@ from ..utils import mj
 
 
 class BartendEnv(Env):
-    _name = "dishwasher"
+    _name = "bartend"
     _robot_type = "ALOHA"
     _height = 240
     _width = 320
@@ -118,14 +118,14 @@ class BartendEnv(Env):
         T_mug = sm.SE3.Rt(R=sm.SO3.Rz(rz_mug), t=np.array([px_mug, py_mug, pz_mug]))
         mj.set_free_joint_pose(self._mj_model, self._mj_data, "mug_free_joint", T_mug)
 
-        px_beer = np.random.uniform(0.05, 0.07)
+        px_beer = np.random.uniform(0.06, 0.07)
         py_beer = np.random.uniform(-0.30, -0.20)
         pz_beer = 0.02
         rz_beer = 0.0
         T_beer = sm.SE3.Rt(R=sm.SO3.Rz(rz_beer), t=np.array([px_beer, py_beer, pz_beer]))
         mj.set_free_joint_pose(self._mj_model, self._mj_data, "beer_free_joint", T_beer)
 
-        px_wine = np.random.uniform(-0.07, -0.05)
+        px_wine = np.random.uniform(-0.07, -0.06)
         py_wine = np.random.uniform(-0.30, -0.20)
         pz_wine = 0.02
         rz_wine = 0.0
@@ -333,7 +333,7 @@ class BartendEnv(Env):
         left_planner10 = self._cal_planner(left_t10, left_R10, left_t11, left_R11, time10)
 
         right_t11 = right_t10.copy()
-        right_t11[2] -= 0.2
+        right_t11[2] -= 0.16
         right_R11 = right_R10.copy()
         right_planner10 = self._cal_planner(right_t10, right_R10, right_t11, right_R11, time10)
 
@@ -358,12 +358,12 @@ class BartendEnv(Env):
 
         time13 = 2.0
         left_t14 = left_t13.copy()
-        left_t14[:2] = [0.04, t_right_base_link[1] - 0.15]
+        left_t14[:2] = [0.04, t_right_base_link[1] - 0.17]
         left_R14 = sm.SO3()
         left_planner13 = self._cal_planner(left_t13, left_R13, left_t14, left_R14, time13)
 
         right_t14 = right_t13.copy()
-        right_t14[2] += 0.2
+        right_t14[2] += 0.16
         right_R14 = right_R13.copy()
         right_planner13 = self._cal_planner(right_t13, right_R13, right_t14, right_R14, time13)
 
@@ -410,7 +410,7 @@ class BartendEnv(Env):
 
         time18 = 2.0
         left_t19 = left_t18.copy()
-        left_t19[2] -= 0.2
+        left_t19[2] -= 0.19
         left_R19 = left_R18.copy()
         left_planner18 = self._cal_planner(left_t18, left_R18, left_t19, left_R19, time18)
 
