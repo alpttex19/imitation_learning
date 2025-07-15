@@ -4,7 +4,7 @@ import threading
 from pynput import keyboard
 
 
-class KeyListener:
+class KeyboardListener:
     def __init__(self):
         super().__init__()
 
@@ -30,7 +30,7 @@ class KeyListener:
             self.active_keys.remove(key_char)
 
         if key == keyboard.Key.esc:
-            return False  # 停止监听
+            return False
 
     def start(self):
         self._listener = keyboard.Listener(

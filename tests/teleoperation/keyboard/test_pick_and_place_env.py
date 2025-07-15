@@ -1,13 +1,11 @@
-import time
-
 import numpy as np
 
 from imitation_learning_lerobot.envs import PickAndPlaceEnv
 from imitation_learning_lerobot.utils.real_time_sync import RealTimeSync
-from imitation_learning_lerobot.utils.key_listener import KeyListener
+from imitation_learning_lerobot.teleoperation.keyboard.keyboard_listener import KeyboardListener
 
 
-class MotionKeyListener(KeyListener):
+class MotionKeyListener(KeyboardListener):
     def __init__(self):
         super().__init__()
         self._action0 = np.array([1.292, 0.734, 1.083, 0.0])

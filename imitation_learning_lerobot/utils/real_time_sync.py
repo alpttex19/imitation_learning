@@ -11,3 +11,6 @@ class RealTimeSync:
         if now < self.next_time:
             time.sleep(self.next_time - now)
         self.next_time += self.time_step
+
+    def reset(self):
+        self.next_time = time.time() + self.time_step
