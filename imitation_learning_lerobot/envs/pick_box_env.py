@@ -125,15 +125,16 @@ class PickBoxEnv(Env):
         n_steps = self._sim_hz // self._control_hz
         if action is not None:
             self._latest_action = action
-            for i in range(n_steps):
-                # Ti = sm.SE3.Trans(action[0], action[1], action[2]) * sm.SE3(sm.SO3(self._T0.R))
-                Ti = self._T0 * sm.SE3.Trans(action[0], action[1], action[2])
-                self._robot.move_cartesian(Ti)
-                joint_position = self._robot.get_joint()
-                self._mj_data.ctrl[:6] = joint_position
-                action[3] = np.clip(action[3], 0, 1)
-                self._mj_data.ctrl[6] = action[3] * 255.0
-                mujoco.mj_step(self._mj_model, self._mj_data)
+
+            Ti = self._T0 * sm.SE3.Trans(action[0], action[1], action[2])
+            self._robot.move_cartesian(Ti)
+            joint_position = self._robot.get_joint()
+            self._mj_data.ctrl[:6] = joint_position
+            action[3] = np.clip(action[3], 0, 1)
+            self._mj_data.ctrl[6] = action[3] * 255.0
+            mujoco.mj_step(self._mj_model, self._mj_data, n_steps)
+            # for i in range(n_steps):
+            #     mujoco.mj_step(self._mj_model, self._mj_data)
 
         observation = self._get_observation()
         reward = 0.0
