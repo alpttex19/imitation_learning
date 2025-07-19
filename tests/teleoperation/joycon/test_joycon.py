@@ -7,7 +7,7 @@ import time
 #     raise Exception("未检测到Joy-Con")
 
 # joycon = JoyCon(*joycon_id)
-joycon = JoyCon(*get_R_id())
+joycon = JoyCon(*get_L_id())
 
 try:
     while True:

@@ -4,11 +4,13 @@ import cv2
 from imitation_learning_lerobot.envs import PickBoxEnv
 from imitation_learning_lerobot.utils.real_time_sync import RealTimeSync
 from imitation_learning_lerobot.teleoperation.keyboard import PickBoxKeyListener
+from imitation_learning_lerobot.teleoperation.joycon import PickBoxJoyconListener
 
 if __name__ == '__main__':
     env = PickBoxEnv(render_mode="human")
 
-    listener = PickBoxKeyListener()
+    # listener = PickBoxKeyListener()
+    listener = PickBoxJoyconListener()
     listener.start()
 
     rt_sync = RealTimeSync(1.0 / env.control_hz)
@@ -29,6 +31,8 @@ if __name__ == '__main__':
         rt_sync.reset()
 
         while not listener.done:
+
+            listener.control()
 
             if not listener.sync:
                 rt_sync.reset()
