@@ -4,6 +4,8 @@ import time
 
 import numpy as np
 
+from .imu import Imu
+
 
 class OrientationEstimation(abc.ABC):
 
@@ -13,20 +15,23 @@ class OrientationEstimation(abc.ABC):
         self._phi = 0.0
         self._theta = 0.0
         self._psi = 0.0
-        # self._euler_angles = np.zeros(3)
         self._timestep = 0.01
+
+        self._imu = Imu()
 
         self._thread: threading.Thread = None
         self._running = True
 
     def start(self):
-        self._thread = threading.Thread(target=self.solve_loop, daemon=True)
+        self._imu.start()
+
+        self._thread = threading.Thread(target=self.update_loop, daemon=True)
         self._thread.start()
 
-    def solve_loop(self):
+    def update_loop(self):
         while self._running:
             self.update()
-            time.sleep(0.01)
+            time.sleep(self._timestep)
 
     @abc.abstractmethod
     def update(self):

@@ -1,5 +1,5 @@
 import abc
 
 
-class Handle(abc):
+class Handle(abc.ABC):
     pass

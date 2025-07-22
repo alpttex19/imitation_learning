@@ -8,4 +8,4 @@ if __name__ == '__main__':
     orientation_estimation.start()
     while True:
         print(orientation_estimation.euler_angles)
-        time.sleep(0.1)
+        time.sleep(1)

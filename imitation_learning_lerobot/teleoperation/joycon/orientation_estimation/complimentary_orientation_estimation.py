@@ -3,6 +3,7 @@ import time
 import numpy as np
 
 from pyjoycon import GyroTrackingJoyCon, get_R_id
+from sympy.benchmarks.bench_meijerint import alpha
 
 from .orientation_estimation import OrientationEstimation
 
@@ -11,22 +12,25 @@ class ComplimentaryOrientationEstimation(OrientationEstimation):
 
     def __init__(self):
         super().__init__()
-        self._imu = GyroTrackingJoyCon(*get_R_id())
-        self._imu.calibrate()
-        time.sleep(3)
-        print()
+
+        self._alpha = 0.1
 
     def update(self):
-        accel = self._imu.accel_in_g
-        gx, gy, gz = self._imu.gyro_in_rad # it may need to be multiplied by two
+        phi_hat = self._phi
+        theta_hat = self._theta
+        psi_hat = self._psi
 
-        # self._phi = np.arctan2(ay, az)
-        # self._theta = np.arctan2(-ax, np.linalg.norm([ay, az]))
+        ax, ay, az = self._imu.get_acc()
+        gx, gy, gz = self._imu.get_gyro()
 
-        ax, ay, az = accel[0]
-        self._phi = np.arctan2(-ay, -az)
-        self._theta = np.arctan2(-ax, np.linalg.norm([ay, az]))
+        phi_hat_acc = np.arctan2(ay, az)
+        theta_hat_acc = np.arctan2(-ax, np.linalg.norm([ay, az]))
         self._psi = 0.0
 
-        # phi_dot = p + np.sin(phi_hat) * tan(theta_hat) * q + np.cos(phi_hat) * tan(theta_hat) * r
-        # theta_dot = np.cos(phi_hat) * q - np.sin(phi_hat) * r
+        phi_dot = gx + np.sin(phi_hat) * np.tan(theta_hat) * gy + np.cos(phi_hat) * np.tan(theta_hat) * gz
+        theta_dot = np.cos(phi_hat) * gy - np.sin(phi_hat) * gz
+        psi_dot = (np.sin(phi_hat) * gy + np.cos(phi_hat) * gz) / np.cos(theta_hat)
+
+        self._phi = (1 - self._alpha) * (phi_hat + self._timestep * phi_dot) + self._alpha * phi_hat_acc
+        self._theta = (1 - self._alpha) * (theta_hat + self._timestep * theta_dot) + self._alpha * theta_hat_acc
+        self._psi = psi_hat + self._timestep * psi_dot

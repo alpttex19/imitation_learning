@@ -78,7 +78,7 @@ class DishwasherEnv(Env):
         self._right_robot.disable_tool()
 
         self._left_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "left/base_link"))
-        self._left_robot_q = np.array([0.0, -0.96, 1.16, 0.0, 0.3, 0.0])
+        self._left_robot_q = np.array([0.0, -1.0, 0, 0.0, 1, 0.0])
         self._left_robot.set_joint(self._left_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._left_robot_q[i]) for i, jn in
          enumerate(self._left_robot_joint_names)]
@@ -91,7 +91,7 @@ class DishwasherEnv(Env):
         self._left_T0 = self._left_robot_T.copy()
 
         self._right_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "right/base_link"))
-        self._right_robot_q = np.array([0.0, -0.96, 1.16, 0.0, 0.3, 0.0])
+        self._right_robot_q = np.array([0.0, -1.0, 1.2, 0.0, -0.2, 0.0])
         self._right_robot.set_joint(self._right_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._right_robot_q[i]) for i, jn in
          enumerate(self._right_robot_joint_names)]
