@@ -7,7 +7,7 @@ import time
 #     raise Exception("未检测到Joy-Con")
 
 # joycon = JoyCon(*joycon_id)
-joycon = GyroTrackingJoyCon(*get_R_id())
+joycon = GyroTrackingJoyCon(*get_L_id())
 # joycon.set_accel_calibration(offset_xyz=[647, 223, -4677])
 # joycon.set_gyro_calibration(offset_xyz=[-30, 27, 15])
 # joycon.set_gyro_calibration(offset_xyz=[0, 0, 0])

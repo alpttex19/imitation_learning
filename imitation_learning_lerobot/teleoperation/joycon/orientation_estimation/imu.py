@@ -1,28 +1,16 @@
-import time
-
-from pyjoycon import get_R_id, GyroTrackingJoyCon
+import abc
 
 
-class Imu:
-    def __init__(self):
-        super().__init__()
+class Imu(abc.ABC):
 
-        self._joycon = GyroTrackingJoyCon(*get_R_id())
-
+    @abc.abstractmethod
     def start(self):
-        self._joycon.calibrate()
-        time.sleep(3)
+        pass
 
+    @abc.abstractmethod
     def get_gyro(self):
-        omega = self._joycon.gyro_in_rad[0]
-        gx = omega[0] * 2
-        gy = -omega[1] * 2
-        gz = -omega[2] * 2
-        return gx, gy, gz
+        pass
 
+    @abc.abstractmethod
     def get_acc(self):
-        accel = self._joycon.accel_in_g[0]
-        ax = accel[0]
-        ay = -accel[1]
-        az = -accel[2]
-        return ax, ay, az
+        pass

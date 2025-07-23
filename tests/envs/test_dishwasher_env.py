@@ -1,22 +1,38 @@
 import time
 
 import numpy as np
+import cv2
 
 from imitation_learning_lerobot.envs import DishwasherEnv
 from imitation_learning_lerobot.teleoperation.joycon.aloha_joycon_handle import AlohaJoyconHandle
+from loop_rate_limiters import RateLimiter
 
 if __name__ == '__main__':
     env = DishwasherEnv(render_mode="human")
-    # env.run()
     env.reset()
+
+    for camera in env.cameras:
+        cv2.namedWindow(camera, cv2.WINDOW_GUI_NORMAL)
 
     handle = AlohaJoyconHandle()
     handle.start()
-    while True:
-        action = np.zeros(14)
-        action[:6] = handle.action
 
-        env.step(action)
+
+    rate_limiter = RateLimiter(frequency=env.control_hz)
+
+    while not handle.done:
+        action = np.zeros(14)
+
+        action[:] = handle.action
+
+        observation, reward, terminated, truncated, info = env.step(action)
 
         env.render()
-        time.sleep(0.01)
+        for camera in env.cameras:
+            cv2.imshow(camera, cv2.cvtColor(observation["pixels"][camera], cv2.COLOR_RGB2BGR))
+        cv2.waitKey(1)
+
+        rate_limiter.sleep()
+
+    handle.close()
+    env.close()

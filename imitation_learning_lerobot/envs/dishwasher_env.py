@@ -78,7 +78,7 @@ class DishwasherEnv(Env):
         self._right_robot.disable_tool()
 
         self._left_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "left/base_link"))
-        self._left_robot_q = np.array([0.0, -1.0, 0, 0.0, 1, 0.0])
+        self._left_robot_q = np.array([0.0, -0.5, 0, 0.0, 0.5, 0.0])
         self._left_robot.set_joint(self._left_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._left_robot_q[i]) for i, jn in
          enumerate(self._left_robot_joint_names)]
@@ -91,7 +91,7 @@ class DishwasherEnv(Env):
         self._left_T0 = self._left_robot_T.copy()
 
         self._right_robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "right/base_link"))
-        self._right_robot_q = np.array([0.0, -1.0, 1.2, 0.0, -0.2, 0.0])
+        self._right_robot_q = np.array([0.0, -0.5, 0.0, 0.0, 0.5, 0.0])
         self._right_robot.set_joint(self._right_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._right_robot_q[i]) for i, jn in
          enumerate(self._right_robot_joint_names)]
@@ -152,23 +152,23 @@ class DishwasherEnv(Env):
     def step(self, action):
         n_steps = self._sim_hz // self._control_hz
 
-        for i in range(n_steps):
-            if action is not None:
-                left_Ti = self._left_T0 * sm.SE3.Rt(R=sm.SO3.RPY(action[3], action[4], action[5]), t=action[:3])
-                self._left_robot.move_cartesian(left_Ti)
-                left_joint_position = self._left_robot.get_joint()
-                self._mj_data.ctrl[:6] = left_joint_position
-                action[6] = np.clip(action[6], 0, 1)
-                self._mj_data.ctrl[6] = action[6] * (0.037 - 0.002) + 0.002
+        # for i in range(n_steps):
+        if action is not None:
+            left_Ti = self._left_T0 * sm.SE3.Rt(R=sm.SO3.RPY(action[3], action[4], action[5]), t=action[:3])
+            self._left_robot.move_cartesian(left_Ti)
+            left_joint_position = self._left_robot.get_joint()
+            self._mj_data.ctrl[:6] = left_joint_position
+            action[6] = np.clip(action[6], 0, 1)
+            self._mj_data.ctrl[6] = action[6] * (0.002 - 0.037) + 0.037
 
-                right_Ti = self._right_T0 * sm.SE3.Rt(R=sm.SO3.RPY(action[10], action[11], action[12]), t=action[7:10])
-                self._right_robot.move_cartesian(right_Ti)
-                right_joint_position = self._right_robot.get_joint()
-                self._mj_data.ctrl[7:13] = right_joint_position
-                action[13] = np.clip(action[13], 0, 1)
-                self._mj_data.ctrl[13] = action[13] * (0.037 - 0.002) + 0.002
+            right_Ti = self._right_T0 * sm.SE3.Rt(R=sm.SO3.RPY(action[10], action[11], action[12]), t=action[7:10])
+            self._right_robot.move_cartesian(right_Ti)
+            right_joint_position = self._right_robot.get_joint()
+            self._mj_data.ctrl[7:13] = right_joint_position
+            action[13] = np.clip(action[13], 0, 1)
+            self._mj_data.ctrl[13] = action[13] * (0.002 - 0.037) + 0.037
 
-            mujoco.mj_step(self._mj_model, self._mj_data)
+        mujoco.mj_step(self._mj_model, self._mj_data, n_steps)
 
         observation = self._get_observation()
         reward = 0.0
@@ -224,12 +224,12 @@ class DishwasherEnv(Env):
 
         self._mj_renderer.update_scene(self._mj_data, overhead_cam_id)
         image_overhead_cam = self._mj_renderer.render()
-        self._mj_renderer.update_scene(self._mj_data, worms_eye_cam_id)
-        image_worms_eye_cam = self._mj_renderer.render()
-        self._mj_renderer.update_scene(self._mj_data, teleoperator_pov_id)
-        image_teleoperator_pov = self._mj_renderer.render()
-        self._mj_renderer.update_scene(self._mj_data, collaborator_pov_id)
-        image_collaborator_pov = self._mj_renderer.render()
+        # self._mj_renderer.update_scene(self._mj_data, worms_eye_cam_id)
+        # image_worms_eye_cam = self._mj_renderer.render()
+        # self._mj_renderer.update_scene(self._mj_data, teleoperator_pov_id)
+        # image_teleoperator_pov = self._mj_renderer.render()
+        # self._mj_renderer.update_scene(self._mj_data, collaborator_pov_id)
+        # image_collaborator_pov = self._mj_renderer.render()
         self._mj_renderer.update_scene(self._mj_data, wrist_cam_left_id)
         image_wrist_cam_left = self._mj_renderer.render()
         self._mj_renderer.update_scene(self._mj_data, wrist_cam_right_id)
@@ -238,9 +238,9 @@ class DishwasherEnv(Env):
         obs = {
             'pixels': {
                 'overhead_cam': image_overhead_cam,
-                'worms_eye_cam': image_worms_eye_cam,
-                'teleoperator_pov': image_teleoperator_pov,
-                'collaborator_pov': image_collaborator_pov,
+                # 'worms_eye_cam': image_worms_eye_cam,
+                # 'teleoperator_pov': image_teleoperator_pov,
+                # 'collaborator_pov': image_collaborator_pov,
                 'wrist_cam_left': image_wrist_cam_left,
                 'wrist_cam_right': image_wrist_cam_right
             },

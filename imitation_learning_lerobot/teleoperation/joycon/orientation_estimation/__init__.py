@@ -1,2 +1,3 @@
+from .imu import Imu
 from .orientation_estimation import OrientationEstimation
 from .complimentary_orientation_estimation import ComplimentaryOrientationEstimation

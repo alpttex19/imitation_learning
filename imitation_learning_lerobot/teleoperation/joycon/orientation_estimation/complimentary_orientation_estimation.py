@@ -5,13 +5,14 @@ import numpy as np
 from pyjoycon import GyroTrackingJoyCon, get_R_id
 from sympy.benchmarks.bench_meijerint import alpha
 
+from .imu import Imu
 from .orientation_estimation import OrientationEstimation
 
 
 class ComplimentaryOrientationEstimation(OrientationEstimation):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, imu: Imu):
+        super().__init__(imu)
 
         self._alpha = 0.1
 

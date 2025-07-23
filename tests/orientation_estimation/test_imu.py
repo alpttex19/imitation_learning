@@ -1,9 +1,9 @@
 import time
 
-from imitation_learning_lerobot.teleoperation.joycon.orientation_estimation.imu import Imu
+from imitation_learning_lerobot.teleoperation.joycon.right_joycon import RightJoycon
 
 if __name__ == '__main__':
-    imu = Imu()
+    imu = RightJoycon()
     while True:
         print("............")
         print(imu.get_acc())

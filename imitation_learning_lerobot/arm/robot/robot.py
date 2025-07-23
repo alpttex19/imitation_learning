@@ -120,7 +120,9 @@ class Robot(abc.ABC):
     def move_cartesian(self, T: SE3):
         q = self.ikine(T)
 
-        assert len(q)  # inverse kinematics failure
+        # assert len(q)  # inverse kinematics failure
+        if len(q) == 0:
+            q = self.q0.copy()
         self.q0 = q[:]
 
     def cal_Tbe(self, Twt: SE3) -> SE3:
