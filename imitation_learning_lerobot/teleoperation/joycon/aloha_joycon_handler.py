@@ -88,11 +88,9 @@ class AlohaJoyconHandler(Handler):
                 self._state[3:6] = self._left_orientation_estimation.euler_angles
                 self._last_action[3:6] = self._action[3:6]
                 self._left_sync = True
-                print("left sync  ")
         else:
             if status['buttons']['left']['right']:
                 self._left_sync = False
-                print("left not sync ")
         if status['buttons']['left']['sl']:
             self._done = True
 
@@ -137,11 +135,9 @@ class AlohaJoyconHandler(Handler):
                 self._state[10:13] = self._right_orientation_estimation.euler_angles
                 self._last_action[10:13] = self._action[10:13]
                 self._right_sync = True
-                print("right sync ")
         else:
             if status['buttons']['right']['y']:
                 self._right_sync = False
-                print("right not sync")
         if status['buttons']['right']['sr']:
             self._done = True
 
@@ -183,7 +179,7 @@ class AlohaJoyconHandler(Handler):
         self._right_orientation_estimation.close()
 
         self._running = False
-        self._thread = False
+        self._thread.join()
 
     @property
     def action(self):

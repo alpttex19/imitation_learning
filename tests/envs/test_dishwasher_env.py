@@ -14,16 +14,15 @@ if __name__ == '__main__':
     for camera in env.cameras:
         cv2.namedWindow(camera, cv2.WINDOW_GUI_NORMAL)
 
-    handle = AlohaJoyconHandler()
-    handle.start()
-
+    handler = AlohaJoyconHandler()
+    handler.start()
 
     rate_limiter = RateLimiter(frequency=env.control_hz)
 
-    while not handle.done:
+    while not handler.done:
         action = np.zeros(14)
 
-        action[:] = handle.action
+        action[:] = handler.action
 
         observation, reward, terminated, truncated, info = env.step(action)
 
@@ -34,5 +33,5 @@ if __name__ == '__main__':
 
         rate_limiter.sleep()
 
-    handle.close()
+    handler.close()
     env.close()

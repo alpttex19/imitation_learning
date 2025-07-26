@@ -15,7 +15,7 @@ from lerobot.common.utils.utils import get_safe_torch_device
 from lerobot.common.envs.utils import preprocess_observation
 
 from imitation_learning_lerobot import configs
-from imitation_learning_lerobot.envs import Env, EnvFactor
+from imitation_learning_lerobot.envs import Env, EnvFactory
 
 
 @parser.wrap()
@@ -27,7 +27,7 @@ def main(cfg: EvalPipelineConfig):
     policy = make_policy(cfg=cfg.policy, env_cfg=cfg.env)
     policy.eval()
 
-    env_cls = EnvFactor.get_strategies(cfg.env.type)
+    env_cls = EnvFactory.get_strategies(cfg.env.type)
     env = env_cls("human")
     observation, info = env.reset()
 

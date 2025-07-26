@@ -1,5 +1,33 @@
 import abc
 
+import numpy as np
+
 
 class Handler(abc.ABC):
-    pass
+    _name = ""
+
+    def __init__(self):
+        super().__init__()
+
+        self._action: np.ndarray = None
+
+        self._done = False
+
+    @classmethod
+    @property
+    def name(cls) -> str:
+        return cls._name
+
+    def start(self):
+        pass
+
+    def close(self):
+        pass
+
+    @property
+    def action(self):
+        return self._action.copy()
+
+    @property
+    def done(self):
+        return self._done

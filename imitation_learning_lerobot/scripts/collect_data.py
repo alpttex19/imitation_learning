@@ -4,7 +4,7 @@ import argparse
 import dataclasses
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 
-from imitation_learning_lerobot.envs import Env, EnvFactor
+from imitation_learning_lerobot.envs import Env, EnvFactory
 
 
 @dataclasses.dataclass(frozen=True)
@@ -110,7 +110,7 @@ def main():
     args = parse_args()
 
     env_type = args.env_type
-    env_cls = EnvFactor.get_strategies(env_type)
+    env_cls = EnvFactory.get_strategies(env_type)
 
     dataset = create_empty_dataset(env_cls)
 

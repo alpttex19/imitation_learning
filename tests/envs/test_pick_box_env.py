@@ -2,57 +2,35 @@ import numpy as np
 import cv2
 
 from imitation_learning_lerobot.envs import PickBoxEnv
-from imitation_learning_lerobot.utils.real_time_sync import RealTimeSync
-from imitation_learning_lerobot.teleoperation.keyboard import PickBoxKeyListener
-from imitation_learning_lerobot.teleoperation.joycon import PickBoxJoyconListener
+from imitation_learning_lerobot.teleoperation import Handler, HandlerFactory
+from loop_rate_limiters import RateLimiter
 
 if __name__ == '__main__':
     env = PickBoxEnv(render_mode="human")
+    env.reset()
 
-    # listener = PickBoxKeyListener()
-    listener = PickBoxJoyconListener()
-    listener.start()
+    for camera in env.cameras:
+        cv2.namedWindow(camera, cv2.WINDOW_GUI_NORMAL)
 
-    rt_sync = RealTimeSync(1.0 / env.control_hz)
+    handler_type = "joycon"
+    handler_cls = HandlerFactory.get_strategies(env.name + "_" + handler_type)
+    handler = handler_cls()
+    handler.start()
+    print(handler.right_calibration_offset)
 
-    window_name1 = 'top'
-    cv2.namedWindow(window_name1, cv2.WINDOW_NORMAL)
+    rate_limiter = RateLimiter(frequency=env.control_hz)
 
-    window_name2 = 'hand'
-    cv2.namedWindow(window_name2, cv2.WINDOW_NORMAL)
+    while not handler.done:
+        action = handler.action
 
-    for i in range(5):
+        observation, reward, terminated, truncated, info = env.step(action)
 
-        observations = []
-        actions = []
+        env.render()
+        for camera in env.cameras:
+            cv2.imshow(camera, cv2.cvtColor(observation["pixels"][camera], cv2.COLOR_RGB2BGR))
+        cv2.waitKey(1)
 
-        listener.reset()
-        observation, info = env.reset()
-        rt_sync.reset()
+        rate_limiter.sleep()
 
-        while not listener.done:
-
-            listener.control()
-
-            if not listener.sync:
-                rt_sync.reset()
-                continue
-
-            action = listener.action
-
-            observations.append(observation)
-            actions.append(action)
-
-            observation, reward, terminated, truncated, info = env.step(action)
-            env.render()
-
-            cv2.imshow(window_name1, cv2.cvtColor(observation["pixels"]['top'], cv2.COLOR_RGB2BGR))
-            cv2.imshow(window_name2, cv2.cvtColor(observation["pixels"]['hand'], cv2.COLOR_RGB2BGR))
-            cv2.waitKey(1)
-
-            rt_sync.sync()
-
-        env.close()
-
-        if listener.save:
-            pass
+    handler.close()
+    env.close()
