@@ -3,16 +3,15 @@ import time
 import numpy as np
 import spatialmath as sm
 from loop_rate_limiters import RateLimiter
-from pyjoycon import JoyCon, get_R_id
 
-from ..handle import Handle
+from ..handler import Handler
 from .orientation_estimation import ComplimentaryOrientationEstimation
 from .sliding_window_filter import SlidingFilter
 from .left_joycon import LeftJoycon
 from .right_joycon import RightJoycon
 
 
-class AlohaJoyconHandle(Handle):
+class AlohaJoyconHandler(Handler):
     def __init__(self):
         super().__init__()
 
@@ -38,7 +37,7 @@ class AlohaJoyconHandle(Handle):
         self._thread: threading.Thread = None
         self._running = True
 
-    def calibrate(self):
+    def _calibrate(self):
         num_samples = 100
         left_samples = []
         right_samples = []
@@ -69,12 +68,12 @@ class AlohaJoyconHandle(Handle):
         self._left_orientation_estimation.start()
         self._right_orientation_estimation.start()
 
-        self.calibrate()
+        self._calibrate()
 
-        self._thread = threading.Thread(target=self.update_loop, daemon=True)
+        self._thread = threading.Thread(target=self._update_loop, daemon=True)
         self._thread.start()
 
-    def update_loop(self):
+    def _update_loop(self):
         rate_limiter = RateLimiter(frequency=1.0 / self._timestep)
         while self._running:
             self._left_update()

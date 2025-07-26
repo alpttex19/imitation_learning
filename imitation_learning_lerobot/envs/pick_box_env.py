@@ -87,7 +87,6 @@ class PickBoxEnv(Env):
         T_Box = sm.SE3.Trans(px_box, py_box, pz_box)
         mj.set_free_joint_pose(self._mj_model, self._mj_data, "Box", T_Box)
         mujoco.mj_forward(self._mj_model, self._mj_data)
-        # self._obj_t = mj.get_body_pose(self._mj_model, self._mj_data, "Box").t
 
         px_container = np.random.uniform(low=1.4, high=1.5)
         py_container = np.random.uniform(low=0.3, high=0.9)
@@ -98,11 +97,6 @@ class PickBoxEnv(Env):
             py_container = np.random.uniform(low=0.3, high=0.9)
             pz_container = 0.77
         T_container = sm.SE3.Trans(px_container, py_container, pz_container)
-
-        # mj.set_free_joint_pose(self._mj_model, self._mj_data, "container_free_joint", T_container)
-        # mujoco.mj_forward(self._mj_model, self._mj_data)
-        # self._obj_t = mj.get_body_pose(self._mj_model, self._mj_data, "container").t
-
 
         container_eq_data = np.zeros(11)
         container_eq_data[3:6] = T_container.t
@@ -132,9 +126,7 @@ class PickBoxEnv(Env):
             self._mj_data.ctrl[:6] = joint_position
             action[3] = np.clip(action[3], 0, 1)
             self._mj_data.ctrl[6] = action[3] * 255.0
-            mujoco.mj_step(self._mj_model, self._mj_data, n_steps)
-            # for i in range(n_steps):
-            #     mujoco.mj_step(self._mj_model, self._mj_data)
+        mujoco.mj_step(self._mj_model, self._mj_data, n_steps)
 
         observation = self._get_observation()
         reward = 0.0

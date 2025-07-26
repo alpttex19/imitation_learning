@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 
 from imitation_learning_lerobot.envs import DishwasherEnv
-from imitation_learning_lerobot.teleoperation.joycon.aloha_joycon_handle import AlohaJoyconHandle
+from imitation_learning_lerobot.teleoperation.joycon.aloha_joycon_handler import AlohaJoyconHandler
 from loop_rate_limiters import RateLimiter
 
 if __name__ == '__main__':
@@ -14,7 +14,7 @@ if __name__ == '__main__':
     for camera in env.cameras:
         cv2.namedWindow(camera, cv2.WINDOW_GUI_NORMAL)
 
-    handle = AlohaJoyconHandle()
+    handle = AlohaJoyconHandler()
     handle.start()
 
 

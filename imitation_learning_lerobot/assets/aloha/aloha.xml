@@ -45,8 +45,8 @@
         <position ctrlrange="-1.8675 2.23402" kp="370"/>
       </default>
       <default class="wrist_rotate">
-        <joint axis="1 0 0" range="-12.56 12.56" damping="1.2"/>
-        <position ctrlrange="-12.56 12.56" kp="104"/>
+        <joint axis="1 0 0" range="-3.14158 3.14158" damping="1.2"/>
+        <position ctrlrange="-3.14158 3.14158" kp="104"/>
       </default>
       <default class="finger">
         <joint type="slide" armature="0.243" damping="40"/>

@@ -1,9 +1,9 @@
 import time
 
-from imitation_learning_lerobot.teleoperation.joycon.aloha_joycon_handle import AlohaJoyconHandle
+from imitation_learning_lerobot.teleoperation.joycon.aloha_joycon_handler import AlohaJoyconHandler
 
 if __name__ == '__main__':
-    handle = AlohaJoyconHandle()
+    handle = AlohaJoyconHandler()
     handle.start()
 
     while True:
