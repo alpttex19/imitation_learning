@@ -36,3 +36,6 @@ class Handler(abc.ABC):
     @property
     def sync(self):
         return self._sync
+
+    def print_info(self):
+        print("------------------------------")

@@ -85,3 +85,17 @@ class PickBoxJoyconHandler(Handler):
     def close(self):
         self._running = False
         self._thread.join()
+
+    def print_info(self):
+        print("------------------------------")
+        print("Start:           A")
+        print("Pause:           Y")
+        print("Stop:            SR")
+        print("+X:              Down")
+        print("-X:              Up")
+        print("+Y:              Right")
+        print("-Y:              Left")
+        print("+Z:              R")
+        print("-Z:              ZR")
+        print("Open:            B")
+        print("Close:           X")

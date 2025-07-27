@@ -37,6 +37,7 @@ def teleoperate(env_cls: Type[Env], handler_type):
     handler_cls = HandlerFactory.get_strategies(env_cls.name + "_" + handler_type)
     handler = handler_cls()
     handler.start()
+    handler.print_info()
 
     env = env_cls(render_mode="human")
     observation, info = env.reset()
@@ -103,10 +104,9 @@ def write_to_h5(env_cls: Type[Env], data_dict: dict):
 
         pixels = obs.create_group('pixels')
         for camera in env_cls.cameras:
-            dtype = data_dict[f'/observations/pixels/{camera}'][0].dtype
             shape = (episode_length, env_cls.height, env_cls.width, 3)
             chunks = (1, env_cls.height, env_cls.width, 3)
-            pixels.create_dataset(camera, shape=shape, dtype=dtype, chunks=chunks, compression='gzip')
+            pixels.create_dataset(camera, shape=shape, dtype='uint8', chunks=chunks, compression='gzip')
 
         root.create_dataset('actions', (episode_length, env_cls.action_dim), dtype='float32', compression='gzip')
 

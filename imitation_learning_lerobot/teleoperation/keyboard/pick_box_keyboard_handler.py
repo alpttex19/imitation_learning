@@ -69,3 +69,17 @@ class PickBoxKeyboardHandler(Handler):
 
     def close(self):
         self._listener.stop()
+
+    def print_info(self):
+        print("------------------------------")
+        print("Start:           Right Ctrl")
+        print("Pause:           Right Shift")
+        print("Stop:            Enter")
+        print("+X:              Keypad 1")
+        print("-X:              Keypad 7")
+        print("+Y:              Keypad 6")
+        print("-Y:              Keypad 4")
+        print("+Z:              Keypad 8")
+        print("-Z:              Keypad 2")
+        print("Open:            Keypad 3")
+        print("Close:           Keypad 9")
