@@ -18,6 +18,8 @@ from ..utils import mj
 class PickBoxEnv(Env):
     _name = "pick_box"
     _robot_type = "UR5e"
+    _height = 480
+    _width = 640
     _states = [
         "px",
         "py",
@@ -28,6 +30,8 @@ class PickBoxEnv(Env):
         "top",
         "hand"
     ]
+    _state_dim = 4
+    _action_dim = 4
 
     def __init__(self, render_mode: str = "rgb_array"):
         super().__init__()
@@ -52,8 +56,6 @@ class PickBoxEnv(Env):
         self._robot_T = sm.SE3()
         self._T0 = sm.SE3()
 
-        self._height = 480
-        self._width = 640
         self._mj_renderer: mujoco.Renderer = None
         self._mj_viewer: mujoco.viewer.Handle = None
 
@@ -108,7 +110,8 @@ class PickBoxEnv(Env):
 
         self._mj_renderer = mujoco.renderer.Renderer(self._mj_model, height=self._height, width=self._width)
         if self._render_mode == "human":
-            self._mj_viewer = mujoco.viewer.launch_passive(self._mj_model, self._mj_data)
+            self._mj_viewer = mujoco.viewer.launch_passive(self._mj_model, self._mj_data,
+                                                           show_left_ui=False, show_right_ui=False)
 
         self._step_num = 0
         observation = self._get_observation()

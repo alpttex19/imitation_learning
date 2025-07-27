@@ -7,4 +7,4 @@ python ./lerobot/lerobot/scripts/train.py \
   --steps=14000 \
   --log_freq=200 \
   --save_freq=2000 \
-  --batch_size=16 \
+  --batch_size=16

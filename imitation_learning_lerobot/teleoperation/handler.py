@@ -12,6 +12,7 @@ class Handler(abc.ABC):
         self._action: np.ndarray = None
 
         self._done = False
+        self._sync = False
 
     @classmethod
     @property
@@ -31,3 +32,7 @@ class Handler(abc.ABC):
     @property
     def done(self):
         return self._done
+
+    @property
+    def sync(self):
+        return self._sync

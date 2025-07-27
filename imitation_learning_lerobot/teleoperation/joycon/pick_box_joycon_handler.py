@@ -19,7 +19,9 @@ class PickBoxJoyconHandler(Handler):
 
         self._right_joycon = RightJoycon()
 
-        self._right_sync = False
+        self._right_calibration_offset = np.zeros(8)
+
+        self._sync = False
         self._done = False
 
         self._thread: threading.Thread = None
@@ -39,10 +41,10 @@ class PickBoxJoyconHandler(Handler):
                  right_joystick['horizontal'], right_joystick['vertical']])
             time.sleep(0.01)
 
-        self.right_calibration_offset = np.mean(right_samples, axis=0)
+        self._right_calibration_offset[:] = np.mean(right_samples, axis=0)
 
     def start(self):
-
+        time.sleep(1.0)
         self._calibrate()
 
         self._thread = threading.Thread(target=self._update_loop, daemon=True)
@@ -56,16 +58,16 @@ class PickBoxJoyconHandler(Handler):
 
     def _right_update(self):
         status = self._right_joycon.get_status()
-        if not self._right_sync:
+        if not self._sync:
             if status['buttons']['right']['a']:
-                self._right_sync = True
+                self._sync = True
         else:
             if status['buttons']['right']['y']:
-                self._right_sync = False
+                self._sync = False
         if status['buttons']['right']['sr']:
             self._done = True
 
-        if not self._right_sync:
+        if not self._sync:
             return
 
         button_lower = status['buttons']['right']['zr']
@@ -74,9 +76,9 @@ class PickBoxJoyconHandler(Handler):
         up = status['buttons']['right']['x']
         down = status['buttons']['right']['b']
 
-        self._action[0] -= (joystick['horizontal'] - self.right_calibration_offset[6]) * 0.000005
-        self._action[1] += (joystick['vertical'] - self.right_calibration_offset[7]) * 0.000005
-        self._action[2] += 0.005 if button_lower == 1 else -0.005 if button_higher == 1 else 0
+        self._action[0] -= (joystick['horizontal'] - self._right_calibration_offset[6]) * 0.000002
+        self._action[1] += (joystick['vertical'] - self._right_calibration_offset[7]) * 0.000002
+        self._action[2] += 0.002 if button_lower == 1 else -0.002 if button_higher == 1 else 0
         self._action[3] += 0.01 if up == 1 else -0.01 if down == 1 else 0.0
         self._action[3] = np.clip(self._action[3], 0.0, 1.0)
 

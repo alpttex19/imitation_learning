@@ -8,6 +8,8 @@ class Env(abc.ABC):
     _width = 640
     _states = []
     _cameras = []
+    _state_dim = 0
+    _action_dim = 0
     _control_hz = 25
 
     def __init__(self, render_mode: str = "rgb_array"):
@@ -63,6 +65,16 @@ class Env(abc.ABC):
     @property
     def cameras(cls) -> list[str]:
         return cls._cameras
+
+    @classmethod
+    @property
+    def state_dim(cls):
+        return cls._state_dim
+
+    @classmethod
+    @property
+    def action_dim(cls):
+        return cls._action_dim
 
     @classmethod
     @property

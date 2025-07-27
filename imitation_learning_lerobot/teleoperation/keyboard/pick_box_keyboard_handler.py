@@ -12,7 +12,6 @@ class PickBoxKeyboardHandler(Handler):
 
         self._action = np.zeros(4)
 
-        self._sync = False
         self._done = False
         self._vel = 0.005
 
