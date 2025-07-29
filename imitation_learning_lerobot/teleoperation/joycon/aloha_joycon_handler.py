@@ -27,6 +27,9 @@ class AlohaJoyconHandler(Handler):
         self._left_joycon = LeftJoycon()
         self._right_joycon = RightJoycon()
 
+        self._left_calibration_offset = np.zeros(8)
+        self._right_calibration_offset = np.zeros(8)
+
         self._left_orientation_estimation = ComplimentaryOrientationEstimation(self._left_joycon)
         self._right_orientation_estimation = ComplimentaryOrientationEstimation(self._right_joycon)
 
@@ -61,10 +64,11 @@ class AlohaJoyconHandler(Handler):
                  right_joystick['horizontal'], right_joystick['vertical']])
             time.sleep(0.01)
 
-        self.left_calibration_offset = np.mean(left_samples, axis=0)
-        self.right_calibration_offset = np.mean(right_samples, axis=0)
+        self._left_calibration_offset = np.mean(left_samples, axis=0)
+        self._right_calibration_offset = np.mean(right_samples, axis=0)
 
     def start(self):
+        time.sleep(1.0)
         self._left_orientation_estimation.start()
         self._right_orientation_estimation.start()
 
@@ -109,8 +113,8 @@ class AlohaJoyconHandler(Handler):
 
         R_env = sm.SO3.RPY(self._last_action[3:6]) * delta_R
         trans = np.zeros(3)
-        trans[0] = (joystick['vertical'] - self.left_calibration_offset[7]) * 0.000001
-        trans[1] = -(joystick['horizontal'] - self.left_calibration_offset[6]) * 0.000001
+        trans[0] = (joystick['vertical'] - self._left_calibration_offset[7]) * 0.000001
+        trans[1] = -(joystick['horizontal'] - self._left_calibration_offset[6]) * 0.000001
         trans[2] = 0.001 if button_higher == 1 else -0.001 if button_lower == 1 else 0
 
         left_action = self._action[:7].copy()
@@ -156,8 +160,8 @@ class AlohaJoyconHandler(Handler):
 
         R_env = sm.SO3.RPY(self._last_action[10:13]) * delta_R
         trans = np.zeros(3)
-        trans[0] = (joystick['vertical'] - self.right_calibration_offset[7]) * 0.000001
-        trans[1] = -(joystick['horizontal'] - self.right_calibration_offset[6]) * 0.000001
+        trans[0] = (joystick['vertical'] - self._right_calibration_offset[7]) * 0.000001
+        trans[1] = -(joystick['horizontal'] - self._right_calibration_offset[6]) * 0.000001
         trans[2] = 0.001 if button_higher == 1 else -0.001 if button_lower == 1 else 0
 
         right_action = self._action[7:].copy()
@@ -188,3 +192,10 @@ class AlohaJoyconHandler(Handler):
     @property
     def done(self):
         return self._done
+
+    @property
+    def sync(self):
+        return self._left_sync or self._right_sync
+
+    def print_info(self):
+        print("------------------------------")

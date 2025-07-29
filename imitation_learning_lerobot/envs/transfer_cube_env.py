@@ -43,7 +43,6 @@ class TransferCubeEnv(Env):
         self._mj_data: mujoco.MjData = mujoco.MjData(self._mj_model)
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        # self._left_robot = VX300S()
         self._left_robot = RobotWrapper()
         self._left_robot_q = np.zeros(self._left_robot.dof)
         self._left_robot_joint_names = ["left/waist", "left/shoulder", "left/elbow", "left/forearm_roll",
@@ -52,7 +51,7 @@ class TransferCubeEnv(Env):
         self._left_T0 = sm.SE3()
         self._left_tool_joint_name = "left/left_finger"
 
-        self._right_robot = VX300S()
+        self._right_robot = RobotWrapper()
         self._right_robot_q = np.zeros(self._right_robot.dof)
         self._right_robot_joint_names = ["right/waist", "right/shoulder", "right/elbow", "right/forearm_roll",
                                          "right/wrist_angle", "right/wrist_rotate"]
@@ -83,11 +82,10 @@ class TransferCubeEnv(Env):
         self._left_robot.set_joint(self._left_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._left_robot_q[i]) for i, jn in
          enumerate(self._left_robot_joint_names)]
-        mj.set_joint_q(self._mj_model, self._mj_data, "left/left_finger", 0.037)
-        mj.set_joint_q(self._mj_model, self._mj_data, "left/right_finger", 0.037)
+        mj.set_joint_q(self._mj_model, self._mj_data, "left/left_finger", 0.06)
+        mj.set_joint_q(self._mj_model, self._mj_data, "left/right_finger", 0.06)
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        # self._left_robot.set_tool(sm.SE3.RPY(0.0, -np.pi / 2, np.pi) * sm.SE3.Trans([0.13, 0.0, -0.003]))
         self._left_robot.set_tool(sm.SE3.Trans([0.13, 0.0, -0.003]))
         self._left_robot_T = self._left_robot.fkine(self._left_robot_q)
         self._left_T0 = self._left_robot_T.copy()
@@ -97,29 +95,47 @@ class TransferCubeEnv(Env):
         self._right_robot.set_joint(self._right_robot_q)
         [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._right_robot_q[i]) for i, jn in
          enumerate(self._right_robot_joint_names)]
-        mj.set_joint_q(self._mj_model, self._mj_data, "right/left_finger", 0.037)
-        mj.set_joint_q(self._mj_model, self._mj_data, "right/right_finger", 0.037)
+        mj.set_joint_q(self._mj_model, self._mj_data, "right/left_finger", 0.06)
+        mj.set_joint_q(self._mj_model, self._mj_data, "right/right_finger", 0.06)
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        self._right_robot.set_tool(sm.SE3.RPY(0.0, -np.pi / 2, np.pi) * sm.SE3.Trans([0.13, 0.0, -0.003]))
+        self._right_robot.set_tool(sm.SE3.Trans([0.13, 0.0, -0.003]))
         self._right_robot_T = self._right_robot.fkine(self._right_robot_q)
         self._right_T0 = self._right_robot_T.copy()
 
         mj_ctrl = np.zeros(14)
         mj_ctrl[:6] = self._left_robot_q
-        mj_ctrl[6] = 0.037
+        mj_ctrl[6] = 0.06
         mj_ctrl[7:13] = self._right_robot_q
-        mj_ctrl[13] = 0.037
+        mj_ctrl[13] = 0.06
         mujoco.mj_setState(self._mj_model, self._mj_data, mj_ctrl, mujoco.mjtState.mjSTATE_CTRL)
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        px_container = np.random.uniform(low=-0.1, high=0.0)
-        py_container = np.random.uniform(low=-0.2, high=0.2)
+        px_cube = np.random.uniform(low=-0.2, high=0.0)
+        py_cube = np.random.uniform(low=-0.3, high=0.1)
+        pz_cube = 0.03
+        T_cube = sm.SE3.Trans(px_cube, py_cube, pz_cube)
+        mj.set_free_joint_pose(self._mj_model, self._mj_data, "cube_free_joint", T_cube)
+        mujoco.mj_forward(self._mj_model, self._mj_data)
 
+        px_container = np.random.uniform(low=0.0, high=0.2)
+        py_container = np.random.uniform(low=py_cube + 0.1, high=0.3)
+
+        pz_container = 0.0
+        T_container = sm.SE3.Trans(px_container, py_container, pz_container)
+
+        container_eq_data = np.zeros(11)
+        container_eq_data[3:6] = T_container.t
+        container_eq_data[6:10] = T_container.UnitQuaternion()
+        container_eq_data[-1] = 1.0
+        mj.attach(self._mj_model, self._mj_data, "container_attach",
+                  "container_free_joint", T_container, eq_data=container_eq_data)
+        mujoco.mj_forward(self._mj_model, self._mj_data)
 
         self._mj_renderer = mujoco.renderer.Renderer(self._mj_model, height=self._height, width=self._width)
         if self._render_mode == "human":
-            self._mj_viewer = mujoco.viewer.launch_passive(self._mj_model, self._mj_data)
+            self._mj_viewer = mujoco.viewer.launch_passive(self._mj_model, self._mj_data,
+                                                           show_left_ui=False, show_right_ui=False)
 
         self._step_num = 0
         observation = self._get_observation()
@@ -140,14 +156,14 @@ class TransferCubeEnv(Env):
             left_joint_position = self._left_robot.get_joint()
             self._mj_data.ctrl[:6] = left_joint_position
             action[6] = np.clip(action[6], 0, 1)
-            self._mj_data.ctrl[6] = action[6] * (0.002 - 0.037) + 0.037
+            self._mj_data.ctrl[6] = action[6] * (0.002 - 0.06) + 0.06
 
             right_Ti = self._right_T0 * sm.SE3.Rt(R=sm.SO3.RPY(action[10], action[11], action[12]), t=action[7:10])
             self._right_robot.move_cartesian(right_Ti)
             right_joint_position = self._right_robot.get_joint()
             self._mj_data.ctrl[7:13] = right_joint_position
             action[13] = np.clip(action[13], 0, 1)
-            self._mj_data.ctrl[13] = action[13] * (0.002 - 0.037) + 0.037
+            self._mj_data.ctrl[13] = action[13] * (0.002 - 0.06) + 0.06
 
         mujoco.mj_step(self._mj_model, self._mj_data, n_steps)
 

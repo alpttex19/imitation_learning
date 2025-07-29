@@ -1,0 +1,12 @@
+<mujoco model="container">
+    <compiler angle="radian" autolimits="true"/>
+
+    <worldbody>
+
+        <body name="cube" pos="0.0 0.0 0.0" quat="1 0 0 0">
+            <joint name="cube_free_joint" type="free"/>
+            <geom name="cube" type="box" size="0.02 0.02 0.02" rgba="1 0 1 1" condim="6"/>
+        </body>
+
+    </worldbody>
+</mujoco>

@@ -1,1 +1,2 @@
 from .pick_box_joycon_handler import PickBoxJoyconHandler
+from .transfer_cube_joycon_handler import TransferCubeJoyconHandler
