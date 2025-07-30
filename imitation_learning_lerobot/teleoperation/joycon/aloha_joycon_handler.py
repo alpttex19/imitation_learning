@@ -198,4 +198,17 @@ class AlohaJoyconHandler(Handler):
         return self._left_sync or self._right_sync
 
     def print_info(self):
-        print("------------------------------")
+        print("----------------------------------------------------------------")
+        print("             Left Joy-Con                    Right Joy-Con")
+        print("Start:       Left(Button)                    A(Button)")
+        print("Pause:       Right(Button)                   Y(Button)")
+        print("Stop:        SL                              SR")
+        print("Forward:     Up(Joystick)                    Up(Joystick)")
+        print("Backward:    Down(Joystick)                  Down(Joystick)")
+        print("Leftward:    Left(Joystick)                  Left(Joystick)")
+        print("Rightward:   Right(Joystick)                 Right(Joystick)")
+        print("Upward:      L                               R")
+        print("Downward:    ZL                              ZR")
+        print("Open:        Down(Button)                    B(Button)")
+        print("Close:       UP(Button)                      X(Button)")
+
