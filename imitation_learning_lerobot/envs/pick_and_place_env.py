@@ -9,25 +9,23 @@ import mujoco.viewer
 
 from .env import Env
 
-from ..arm.robot import Robot, UR5e
-from ..arm.motion_planning import LinePositionParameter, OneAttitudeParameter, CartesianParameter, \
-    QuinticVelocityParameter, TrajectoryParameter, TrajectoryPlanner
+from ..arm.robot import Robot, XArm7
+from ..arm.motion_planning import (
+    LinePositionParameter,
+    OneAttitudeParameter,
+    CartesianParameter,
+    QuinticVelocityParameter,
+    TrajectoryParameter,
+    TrajectoryPlanner,
+)
 from ..utils import mj
 
 
 class PickAndPlaceEnv(Env):
     _name = "pick_and_place"
-    _robot_type = "UR5e"
-    _states = [
-        "px",
-        "py",
-        "pz",
-        "gripper"
-    ]
-    _cameras = [
-        "top",
-        "hand"
-    ]
+    _robot_type = "Xarm7"
+    _states = ["px", "py", "pz", "gripper"]
+    _cameras = ["top", "hand"]
 
     def __init__(self, render_mode: str = "rgb_array"):
         super().__init__()
@@ -41,14 +39,23 @@ class PickAndPlaceEnv(Env):
         self._render_cache = None
 
         scene_path = Path(__file__).parent.parent / Path("assets/scenes/scene.xml")
-        self._mj_model: mujoco.MjModel = mujoco.MjModel.from_xml_path(os.fspath(scene_path))
+        self._mj_model: mujoco.MjModel = mujoco.MjModel.from_xml_path(
+            os.fspath(scene_path)
+        )
         self._mj_data: mujoco.MjData = mujoco.MjData(self._mj_model)
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        self._robot: Robot = UR5e()
+        self._robot: Robot = XArm7()
         self._robot_q = np.zeros(self._robot.dof)
-        self._ur5e_joint_names = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint",
-                                  "wrist_2_joint", "wrist_3_joint"]
+        self._xarm7_joint_names = [
+            "joint1",
+            "joint2",
+            "joint3",
+            "joint4",
+            "joint5",
+            "joint6",
+            "joint7",
+        ]
         self._robot_T = sm.SE3()
         self._T0 = sm.SE3()
 
@@ -68,13 +75,23 @@ class PickAndPlaceEnv(Env):
         self._robot.disable_base()
         self._robot.disable_tool()
 
-        self._robot.set_base(mj.get_body_pose(self._mj_model, self._mj_data, "ur5e_base"))
+        self._robot.set_base(
+            mj.get_body_pose(self._mj_model, self._mj_data, "link_base")
+        )
         self._robot_q = np.array([0.0, 0.0, np.pi / 2, 0.0, -np.pi / 2, 0.0])
         self._robot.set_joint(self._robot_q)
-        [mj.set_joint_q(self._mj_model, self._mj_data, jn, self._robot_q[i]) for i, jn in
-         enumerate(self._ur5e_joint_names)]
+        [
+            mj.set_joint_q(self._mj_model, self._mj_data, jn, self._robot_q[i])
+            for i, jn in enumerate(self._xarm7_joint_names)
+        ]
         mujoco.mj_forward(self._mj_model, self._mj_data)
-        mj.attach(self._mj_model, self._mj_data, "attach", "2f85", self._robot.fkine(self._robot_q))
+        mj.attach(
+            self._mj_model,
+            self._mj_data,
+            "attach",
+            "gripper",
+            self._robot.fkine(self._robot_q),
+        )
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
         self._robot.set_tool(sm.SE3.Trans(0.0, 0.0, 0.15))
@@ -89,9 +106,13 @@ class PickAndPlaceEnv(Env):
         mujoco.mj_forward(self._mj_model, self._mj_data)
         self._obj_t = mj.get_body_pose(self._mj_model, self._mj_data, "Box").t
 
-        self._mj_renderer = mujoco.renderer.Renderer(self._mj_model, height=self._height, width=self._width)
+        self._mj_renderer = mujoco.renderer.Renderer(
+            self._mj_model, height=self._height, width=self._width
+        )
         if self._render_mode == "human":
-            self._mj_viewer = mujoco.viewer.launch_passive(self._mj_model, self._mj_data)
+            self._mj_viewer = mujoco.viewer.launch_passive(
+                self._mj_model, self._mj_data
+            )
 
         self._step_num = 0
         observation = self._get_observation()
@@ -103,7 +124,9 @@ class PickAndPlaceEnv(Env):
         if action is not None:
             self._latest_action = action
             for i in range(n_steps):
-                Ti = sm.SE3.Trans(action[0], action[1], action[2]) * sm.SE3(sm.SO3(self._T0.R))
+                Ti = sm.SE3.Trans(action[0], action[1], action[2]) * sm.SE3(
+                    sm.SO3(self._T0.R)
+                )
                 self._robot.move_cartesian(Ti)
                 joint_position = self._robot.get_joint()
                 self._mj_data.ctrl[:6] = joint_position
@@ -140,12 +163,16 @@ class PickAndPlaceEnv(Env):
     def _get_observation(self):
         mujoco.mj_forward(self._mj_model, self._mj_data)
 
-        for i in range(len(self._ur5e_joint_names)):
-            self._robot_q[i] = mj.get_joint_q(self._mj_model, self._mj_data, self._ur5e_joint_names[i])[0]
+        for i in range(len(self._xarm7_joint_names)):
+            self._robot_q[i] = mj.get_joint_q(
+                self._mj_model, self._mj_data, self._xarm7_joint_names[i]
+            )[0]
         self._robot_T = self._robot.fkine(self._robot_q)
         agent_pos = np.zeros(4, dtype=np.float32)
         agent_pos[:3] = self._robot_T.t
-        agent_pos[3] = np.linalg.norm(self._mj_data.site('left_pad').xpos - self._mj_data.site('right_pad').xpos)
+        agent_pos[3] = np.linalg.norm(
+            self._mj_data.site("left_pad").xpos - self._mj_data.site("right_pad").xpos
+        )
 
         self._mj_renderer.update_scene(self._mj_data, 0)
         image_top = self._mj_renderer.render()
@@ -154,13 +181,7 @@ class PickAndPlaceEnv(Env):
         image_hand = self._mj_renderer.render()
         # image_hand = np.moveaxis(image_hand, -1, 0)
 
-        obs = {
-            'pixels': {
-                'top': image_top,
-                'hand': image_hand
-            },
-            'agent_pos': agent_pos
-        }
+        obs = {"pixels": {"top": image_top, "hand": image_hand}, "agent_pos": agent_pos}
         self._render_cache = image_top
         return obs
 
@@ -216,7 +237,16 @@ class PickAndPlaceEnv(Env):
         planner7 = self._cal_planner(t7, R7, t8, R8, time7)
 
         time_array = np.array([time0, time1, time2, time3, time4, time5, time6, time7])
-        planner_array = [planner0, planner1, planner2, planner3, planner4, planner5, planner6, planner7]
+        planner_array = [
+            planner0,
+            planner1,
+            planner2,
+            planner3,
+            planner4,
+            planner5,
+            planner6,
+            planner7,
+        ]
 
         observations = []
         actions = []
@@ -232,15 +262,14 @@ class PickAndPlaceEnv(Env):
                         start_time = 0.0
                     else:
                         start_time = time_cumsum[j - 1]
-                    planner_interpolate = planner_array[j].interpolate(self._mj_data.time - start_time).t
+                    planner_interpolate = (
+                        planner_array[j].interpolate(self._mj_data.time - start_time).t
+                    )
                     break
 
             else:
                 self.close()
-                return {
-                    "observations": observations,
-                    "actions": actions
-                }
+                return {"observations": observations, "actions": actions}
             action[:3] = planner_interpolate
             if self._mj_data.time >= time_cumsum[5]:
                 action[3] = np.maximum(action[3] - 1.0 / time6 / self._control_hz, 0.0)
@@ -259,11 +288,13 @@ class PickAndPlaceEnv(Env):
         attitude_parameter = OneAttitudeParameter(R0, R1)
         cartesian_parameter = CartesianParameter(position_parameter, attitude_parameter)
         velocity_parameter = QuinticVelocityParameter(time)
-        trajectory_parameter = TrajectoryParameter(cartesian_parameter, velocity_parameter)
+        trajectory_parameter = TrajectoryParameter(
+            cartesian_parameter, velocity_parameter
+        )
         trajectory_planner = TrajectoryPlanner(trajectory_parameter)
         return trajectory_planner
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     env = PickAndPlaceEnv(render_mode="human")
     env_data = env.run()

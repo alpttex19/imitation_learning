@@ -6,8 +6,7 @@
 		<!--		 <flag multiccd="enable"/>-->
     </option>
 
-    <include file="../universal_robots_ur5e/ur5e.xml" />
-    <include file="../robotiq_2f85/2f85.xml" />
+    <include file="../ufactory_xarm7/xarm7_xml/xarm7.xml" />
 
 
     <statistic center="0.3 0 0.3" extent="0.8" meansize="0.08" />
@@ -27,7 +26,7 @@
                   reflectance="0.2" />
 
         <!--meshes-->
-        <mesh name ="table" file="../table/sigmund_table.stl" scale= "1 1 1"/>
+        <mesh name ="table" file="../../table/sigmund_table.stl" scale= "1 1 1"/>
     </asset>
 
     <worldbody>
@@ -73,15 +72,9 @@
 		</body>
     </worldbody>
 
-    <contact>
-		<exclude body1="flange" body2="2f85_base" />
-		<exclude body1="wrist_3_link" body2="2f85_base" />
-		<exclude body1="wrist_2_link" body2="2f85_base" />
-	</contact>
-
 	<equality>
-		<weld name="attach" body1="flange" body2="2f85_base" active="false" />
-		<weld name="attach_mocap" body1="mocap" body2="ur5e_base" active="false" />
+		<weld name="attach" body1="flange" body2="xarm_gripper_base_link" active="false" />
+		<weld name="attach_mocap" body1="mocap" body2="link_base" active="false" />
 	</equality>
 
 </mujoco>
