@@ -1,186 +1,226 @@
 import os
-import sys
-import os.path as osp
-import casadi
+from pathlib import Path
+
 import numpy as np
-import pinocchio as pin
-import time
+import placo
+from spatialmath import SE3
 
-# import rospy
-from pinocchio import casadi as cpin
-from pinocchio.robot_wrapper import RobotWrapper
-from scipy.spatial.transform import Rotation as R
-
-import os
-import sys
+from .robot import Robot
 
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
+class RobotWrapper(Robot):
+    def __init__(self) -> None:
+        super().__init__()
 
+        self._dof = 7
 
-class CasadiRobotManager:
-    def __init__(self):
-        np.set_printoptions(precision=5, suppress=True, linewidth=200)
-        self.type_name = "casadi"
-
-        self.urdf_path = osp.join(
-            osp.dirname(__file__),
-            "xarm7_urdf",
-            "xarm7.urdf",
+        urdf_dir = os.path.join(
+            Path(__file__).parent.parent.parent,
+            "assets/ufactory_xarm7/xarm7_urdf/xarm7.urdf",
         )
-        self.mesh_package_path = os.path.join(os.path.dirname(__file__), "xarm7_urdf")
-
-        self.robot = pin.RobotWrapper.BuildFromURDF(
-            filename=self.urdf_path, package_dirs=self.mesh_package_path
+        self._robot_wrapper = placo.RobotWrapper(
+            os.fspath(urdf_dir), placo.Flags.ignore_collisions
         )
 
-        # 加载机器人模型
-        self.model = pin.buildModelFromUrdf(self.urdf_path)
-        self.data = self.model.createData()
-        # 末端执行器Frame ID (通常是最后一个link)
-        self.end_effector_frame_id = self.model.getFrameId("link7")
-
-        self.init_data = np.zeros(self.robot.model.nq)
-        self.history_data = np.zeros(self.robot.model.nq)
-
-        # Creating Casadi models and data for symbolic computing
-        self.cmodel = cpin.Model(self.robot.model)
-        self.cdata = self.cmodel.createData()
-
-        # Creating symbolic variables
-        self.cq = casadi.SX.sym("q", self.robot.model.nq, 1)
-        self.cTf = casadi.SX.sym("tf", 4, 4)
-        cpin.framesForwardKinematics(self.cmodel, self.cdata, self.cq)
-
-        # # Get the hand joint ID and define the error function
-        self.gripper_id = self.robot.model.getFrameId("link7")
-        self.error = casadi.Function(
-            "error",
-            [self.cq, self.cTf],
-            [
-                casadi.vertcat(
-                    cpin.log6(
-                        self.cdata.oMf[self.gripper_id].inverse() * cpin.SE3(self.cTf)
-                    ).vector,
-                )
-            ],
-        )
-
-        # Defining the optimization problem
-        self.opti = casadi.Opti()
-        self.var_q = self.opti.variable(self.robot.model.nq)
-        self.var_q_last = self.history_data  # for smooth
-        self.param_tf = self.opti.parameter(4, 4)
-        self.totalcost = casadi.sumsqr(self.error(self.var_q, self.param_tf))
-        self.regularization = casadi.sumsqr(self.var_q)
-        self.smooth_cost = casadi.sumsqr(self.var_q - self.var_q_last)  # for smooth
-
-        # Setting optimization constraints and goals
-        self.opti.subject_to(
-            self.opti.bounded(
-                # self.robot.model.lowerPositionLimit,
-                np.array([-np.pi, -np.pi, -np.pi, -np.pi, -np.pi, -np.pi, -np.pi]),
-                self.var_q,
-                # self.robot.model.upperPositionLimit,
-                np.array([np.pi, np.pi, np.pi, np.pi, np.pi, np.pi, np.pi]),
-            )
-        )
-        # self.opti.minimize(20 * self.totalcost + 0.01 * self.regularization)
-        self.opti.minimize(20 * self.totalcost + 0.0 * self.smooth_cost)  # for smooth
-
-        opts = {
-            "ipopt": {"print_level": 0, "max_iter": 2000, "tol": 1e-4},
-            "print_time": False,
-        }
-        self.opti.solver("ipopt", opts)
-
-    def ik_fun(self, target_pose, motorstate=None, motorV=None):
-        if motorstate is not None:
-            self.init_data = motorstate
-        self.opti.set_initial(self.var_q, self.init_data)
-
-        self.opti.set_value(self.param_tf, target_pose)
-        # self.opti.set_value(self.var_q_last, self.init_data) # for smooth
-
-        try:
-            # sol = self.opti.solve()
-            sol = self.opti.solve_limited()
-            sol_q = self.opti.value(self.var_q)
-
-            # total_cost
-
-            if self.init_data is not None:
-                max_diff = max(abs(self.history_data - sol_q))
-                # print("max_diff:", max_diff)
-                self.init_data = sol_q
-                if max_diff > 30.0 / 180.0 * 3.1415:
-                    # print("Excessive changes in joint angle:", max_diff)
-                    self.init_data = np.zeros(self.robot.model.nq)
-            else:
-                self.init_data = sol_q
-            self.history_data = sol_q
-
-            if motorV is not None:
-                v = motorV * 0.0
-            else:
-                v = (sol_q - self.init_data) * 0.0
-
-            tau_ff = pin.rnea(
-                self.robot.model,
-                self.robot.data,
-                sol_q,
-                v,
-                np.zeros(self.robot.model.nv),
-            )
-
-            return sol_q, tau_ff
-
-        except Exception as e:
-            print(f"ERROR in convergence, plotting debug info.{e}")
-            sol_q = self.opti.debug.value(self.var_q)  # return original value
-            return sol_q, []
-
-    def ik(self, pos=np.zeros(3), rot=np.eye(3), last_q=None):
-        target_se3 = pin.SE3(rot, pos)
-        sol_q, tau_ff = self.ik_fun(target_se3.homogeneous)
-
-        # casadi fk
-        res_error = self.error(sol_q, target_se3.homogeneous)
-
-        norm_err = np.linalg.norm(res_error)
-
-        return sol_q, norm_err
-
-    def fkine(self, q):
-        # 更新Pinocchio模型
-        pin.forwardKinematics(self.model, self.data, q)
-        pin.updateFramePlacements(self.model, self.data)
-
-        # 获取末端执行器位姿
-        T_matrix = self.data.oMf[self.end_effector_frame_id].homogeneous
-
-        return T_matrix
-
-
-def test_ik():
-    ik_solver = CasadiRobotManager()
-    object_transform = np.array(
-        [
-            [1.0, 0.0, 0.0, 0.08],
-            [0.0, 1.0, 0.0, 0.25],
-            [0.0, 0.0, 1.0, 0.85],
-            [0.0, 0.0, 0.0, 1.0],
+        self._joint_names = [
+            "joint1",
+            "joint2",
+            "joint3",
+            "joint4",
+            "joint5",
+            "joint6",
+            "joint7",
         ]
-    )
 
-    rot = object_transform[:3, :3]
-    pos = object_transform[:3, 3]
+        self._solver = placo.KinematicsSolver(self._robot_wrapper)
+        self._solver.mask_fbase(True)
+        self._effector_task = self._solver.add_frame_task("link7", np.eye(4))
+        self._effector_task.configure("link7", "soft", 1.0, 0.1)
 
-    q_solved, error_norm = ik_solver.ik(pos=pos, rot=rot)
-    print(q_solved, error_norm)
+        # self._manipulability = self._solver.add_manipulability_task(
+        #     "link7", "both", 1.0
+        # )
+        # self._manipulability.configure("manipulability", "soft", 1e-1)
+
+        # self._solver.enable_joint_limits(True)
+        # self._solver.enable_velocity_limits(True)
+        # self._solver.dt = 0.01
+
+    def fkine(self, q) -> SE3:
+        for i, joint_name in enumerate(self._joint_names):
+            self._robot_wrapper.set_joint(joint_name, q[i])
+        self._robot_wrapper.update_kinematics()
+        return (
+            self._base
+            * SE3(self._robot_wrapper.get_T_world_frame("link7"))
+            * self._tool
+        )
+
+    def ikine(self, Twt: SE3, max_iterations=100) -> np.ndarray:
+        """
+        改进的IK求解方法
+        """
+        # 目标变换矩阵
+        T_target = (self._base.inv() * Twt * self._tool.inv()).A
+        self._effector_task.T_world_frame = T_target
+
+        best_q = np.zeros(self._dof)
+        best_error = float("inf")
+
+        # 多次尝试求解
+        for attempt in range(max_iterations):
+            try:
+                # 求解
+                result = self._solver.solve(True)
+                self._robot_wrapper.update_kinematics()
+                # self._solver.dump_status()
+
+                # 检查收敛性
+                current_T = self._robot_wrapper.get_T_world_frame("link7")
+                pos_error = np.linalg.norm(T_target[:3, 3] - current_T[:3, 3])
+                rot_error = np.linalg.norm(T_target[:3, :3] - current_T[:3, :3])
+                total_error = pos_error + rot_error
+
+                # 保存最佳解
+                if total_error < best_error:
+                    best_error = total_error
+                    for i, joint_name in enumerate(self._joint_names):
+                        best_q[i] = self._robot_wrapper.get_joint(joint_name)
+
+                # 如果误差足够小，提前退出
+                if pos_error < 1e-4 and rot_error < 1e-3:
+                    break
+
+            except Exception as e:
+                print(f"IK attempt {attempt} failed: {e}")
+                # 如果求解失败，稍微扰动初始值再试
+                if attempt < max_iterations - 1:
+                    noise = np.random.normal(0, 0.01, 7)
+                    q_perturbed = self._clip_to_joint_limits(q_init + noise)
+                    for i, joint_name in enumerate(self._joint_names):
+                        self._robot_wrapper.set_joint(joint_name, q_perturbed[i])
+
+        return best_q
+
+    def set_joint(self, q):
+        super().set_joint(q)
+        for i, joint_name in enumerate(self._joint_names):
+            self._robot_wrapper.set_joint(joint_name, q[i])
+        self._robot_wrapper.update_kinematics()
+
+    def set_base(self, base: SE3):
+        self._base = base.copy()
+
+    def set_tool(self, tool: SE3):
+        self._tool = tool.copy()
+
+    def disable_base(self):
+        self._base = SE3()
+
+    def disable_tool(self):
+        self._tool = SE3()
+
+    def test_fk_ik(self, num_tests=5):
+        """
+        简单的FK-IK测试：随机关节角 -> FK -> IK -> FK
+        """
+        print("Testing FK-IK consistency...")
+        print("=" * 40)
+
+        self.disable_base()
+        self.disable_tool()
+
+        success_count = 0
+
+        for i in range(num_tests):
+            # 生成随机关节角（在合理范围内）
+            q_original = np.random.uniform(-np.pi / 2, np.pi / 2, 7)
+
+            print(f"\nTest {i+1}:")
+            print(f"Original q: {q_original}")
+
+            # 步骤1: FK - 计算末端位姿
+            T_target = self.fkine(q_original)
+
+            # 步骤2: IK - 从末端位姿求解关节角
+            q_solved = self.ikine(T_target)
+            print(f"IK solved q: {q_solved}")
+
+            print(f"FK result position: [{T_target}]")
+            # 步骤3: FK验证 - 用求解的关节角再次计算末端位姿
+            T_verify = self.fkine(q_solved)
+            print(f"Verify position: [{T_verify}]")
+
+            # 计算位置误差
+            pos_error = np.linalg.norm(T_target.t - T_verify.t)
+            print(f"Position error: {pos_error:.6f} m")
+
+            # 判断是否成功
+            if pos_error < 0.001:  # 1mm误差容忍度
+                print("✅ PASS")
+                success_count += 1
+            else:
+                print("❌ FAIL")
+
+        print(f"\n{'='*40}")
+        print(f"Test Summary: {success_count}/{num_tests} tests passed")
+        print(f"Success rate: {100*success_count/num_tests:.1f}%")
+
+        return success_count == num_tests
+
+    def test_fk_basic(self, test_configs=None):
+        """
+        基本FK测试：测试几个固定配置
+        """
+        print("Testing basic FK...")
+        print("=" * 30)
+
+        if test_configs is None:
+            test_configs = [
+                np.zeros(7),  # 零位
+                np.array([0.1, 0.2, -0.3, 0.4, -0.5, 0.6, -0.7]),  # 随机1
+                np.array([np.pi / 4, 0, 0, 0, 0, 0, 0]),  # 第一关节45度
+            ]
+
+        self.disable_base()
+        self.disable_tool()
+
+        for i, q in enumerate(test_configs):
+            print(f"\nTest {i+1}: q = {q}")
+
+            try:
+                T = self.fkine(q)
+                pos = T.t
+                R = T.R
+
+                print(f"Position: [{pos[0]:.4f}, {pos[1]:.4f}, {pos[2]:.4f}]")
+                print(f"Rotation matrix det: {np.linalg.det(R):.6f}")
+
+                # 检查旋转矩阵是否有效
+                if abs(np.linalg.det(R) - 1.0) < 1e-6:
+                    print("✅ Valid rotation matrix")
+                else:
+                    print("❌ Invalid rotation matrix")
+
+            except Exception as e:
+                print(f"❌ Error: {str(e)}")
+
+    def quick_test(self):
+        """
+        快速测试FK和IK
+        """
+        print("🤖 Quick Robot Test")
+        print("=" * 20)
+
+        # 测试基本FK
+        self.test_fk_basic()
+
+        print("\n")
+
+        # 测试FK-IK一致性
+        return self.test_fk_ik(num_tests=100)
 
 
 if __name__ == "__main__":
-    test_ik()
+    robot = RobotWrapper()
+    robot.quick_test()

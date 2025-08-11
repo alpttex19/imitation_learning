@@ -17,14 +17,16 @@ def get_transformation_mdh(alpha, a, d, theta, sigma, q) -> SE3:
 
 
 def circle(V):
-    return np.array([
-        [V[0], V[1], V[2], 0, 0, 0, 0, V[5], -V[4], 0],
-        [0, V[0], 0, V[1], V[2], 0, -V[5], 0, V[3], 0],
-        [0, 0, V[0], 0, V[1], V[2], V[4], -V[3], 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, -V[2], V[1], V[3]],
-        [0, 0, 0, 0, 0, 0, V[2], 0, -V[0], V[4]],
-        [0, 0, 0, 0, 0, 0, -V[1], V[0], 0, V[5]]
-    ])
+    return np.array(
+        [
+            [V[0], V[1], V[2], 0, 0, 0, 0, V[5], -V[4], 0],
+            [0, V[0], 0, V[1], V[2], 0, -V[5], 0, V[3], 0],
+            [0, 0, V[0], 0, V[1], V[2], V[4], -V[3], 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, -V[2], V[1], V[3]],
+            [0, 0, 0, 0, 0, 0, V[2], 0, -V[0], V[4]],
+            [0, 0, 0, 0, 0, 0, -V[1], V[0], 0, V[5]],
+        ]
+    )
 
 
 def wrap(theta) -> tuple:
@@ -46,7 +48,7 @@ class Robot(abc.ABC):
     def __init__(self) -> None:
         super().__init__()
         self.robot: rtb.Robot = None
-        self._dof = 0
+        self._dof = 7
         self.q0 = [0.0 for _ in range(self.dof)]
         self.alpha_array = [0.0 for _ in range(self.dof)]
         self.a_array = [0.0 for _ in range(self.dof)]
@@ -72,8 +74,18 @@ class Robot(abc.ABC):
     def inertial_parameters(self) -> np.ndarray:
         parameters = []
         for i in range(self._dof):
-            parameter = [self._Gs[i][0, 0], self._Gs[i][0, 1], self._Gs[i][0, 2], self._Gs[i][1, 1], self._Gs[i][1, 2],
-                         self._Gs[i][2, 2], self._Gs[i][2, 4], self._Gs[i][0, 5], self._Gs[i][1, 3], self._Gs[i][3, 3]]
+            parameter = [
+                self._Gs[i][0, 0],
+                self._Gs[i][0, 1],
+                self._Gs[i][0, 2],
+                self._Gs[i][1, 1],
+                self._Gs[i][1, 2],
+                self._Gs[i][2, 2],
+                self._Gs[i][2, 4],
+                self._Gs[i][0, 5],
+                self._Gs[i][1, 3],
+                self._Gs[i][3, 3],
+            ]
             parameters.extend(parameter)
         parameters.extend(self._Jms)
         return np.array(parameters)
@@ -81,16 +93,32 @@ class Robot(abc.ABC):
     @inertial_parameters.setter
     def inertial_parameters(self, parameters):
         for i in range(self._dof):
-            I = np.array([
-                [parameters[i * Robot._link_para_num + 0], parameters[i * Robot._link_para_num + 1],
-                 parameters[i * Robot._link_para_num + 2]],
-                [parameters[i * Robot._link_para_num + 1], parameters[i * Robot._link_para_num + 3],
-                 parameters[i * Robot._link_para_num + 4]],
-                [parameters[i * Robot._link_para_num + 2], parameters[i * Robot._link_para_num + 4],
-                 parameters[i * Robot._link_para_num + 5]]
-            ])
-            mp = np.array([parameters[i * Robot._link_para_num + 6], parameters[i * Robot._link_para_num + 7],
-                           parameters[i * Robot._link_para_num + 8]])
+            I = np.array(
+                [
+                    [
+                        parameters[i * Robot._link_para_num + 0],
+                        parameters[i * Robot._link_para_num + 1],
+                        parameters[i * Robot._link_para_num + 2],
+                    ],
+                    [
+                        parameters[i * Robot._link_para_num + 1],
+                        parameters[i * Robot._link_para_num + 3],
+                        parameters[i * Robot._link_para_num + 4],
+                    ],
+                    [
+                        parameters[i * Robot._link_para_num + 2],
+                        parameters[i * Robot._link_para_num + 4],
+                        parameters[i * Robot._link_para_num + 5],
+                    ],
+                ]
+            )
+            mp = np.array(
+                [
+                    parameters[i * Robot._link_para_num + 6],
+                    parameters[i * Robot._link_para_num + 7],
+                    parameters[i * Robot._link_para_num + 8],
+                ]
+            )
             mp_mat = mr.VecToso3(mp)
             m_mat = parameters[i * Robot._link_para_num + 9] * np.eye(3)
 
@@ -158,17 +186,26 @@ class Robot(abc.ABC):
         for i in range(self._dof):
             Mi = np.dot(Mi, self._Ms[i])
             Ai[:, i] = np.dot(mr.Adjoint(mr.TransInv(Mi)), self._Ses[i])
-            AdTi[i] = mr.Adjoint(np.dot(mr.MatrixExp6(mr.VecTose3(Ai[:, i] * -qs[i])), mr.TransInv(self._Ms[i])))
+            AdTi[i] = mr.Adjoint(
+                np.dot(
+                    mr.MatrixExp6(mr.VecTose3(Ai[:, i] * -qs[i])),
+                    mr.TransInv(self._Ms[i]),
+                )
+            )
             Vi[:, i + 1] = np.dot(AdTi[i], Vi[:, i]) + Ai[:, i] * dqs[i]
-            Vdi[:, i + 1] = np.dot(AdTi[i], Vdi[:, i]) + Ai[:, i] * ddqs[i] + np.dot(mr.ad(Vi[:, i + 1]), Ai[:, i]) * \
-                            dqs[i]
+            Vdi[:, i + 1] = (
+                np.dot(AdTi[i], Vdi[:, i])
+                + Ai[:, i] * ddqs[i]
+                + np.dot(mr.ad(Vi[:, i + 1]), Ai[:, i]) * dqs[i]
+            )
 
         Yi = np.zeros((6, Robot._link_para_num * self._dof))
         Y = np.zeros((self.dof, Robot._link_para_num * self._dof))
         for i in range(self._dof - 1, -1, -1):
             Yi = AdTi[i + 1].T @ Yi
-            Yi[:, i * Robot._link_para_num: (i + 1) * Robot._link_para_num] = circle(Vdi[:, i + 1]) - mr.ad(
-                Vi[:, i + 1]).T @ circle(Vi[:, i + 1])
+            Yi[:, i * Robot._link_para_num : (i + 1) * Robot._link_para_num] = circle(
+                Vdi[:, i + 1]
+            ) - mr.ad(Vi[:, i + 1]).T @ circle(Vi[:, i + 1])
             Y[i, :] = Ai[:, i].T @ Yi
         Y = np.hstack((Y, np.diag(ddqs)))
         return Y
@@ -185,19 +222,30 @@ class Robot(abc.ABC):
         for i in range(self._dof):
             Mi = np.dot(Mi, self._Ms[i])
             Ai[:, i] = np.dot(mr.Adjoint(mr.TransInv(Mi)), self._Ses[i])
-            AdTi[i] = mr.Adjoint(np.dot(mr.MatrixExp6(mr.VecTose3(Ai[:, i] * -qs[i])), mr.TransInv(self._Ms[i])))
+            AdTi[i] = mr.Adjoint(
+                np.dot(
+                    mr.MatrixExp6(mr.VecTose3(Ai[:, i] * -qs[i])),
+                    mr.TransInv(self._Ms[i]),
+                )
+            )
             Vi[:, i + 1] = np.dot(AdTi[i], Vi[:, i]) + Ai[:, i] * dqs[i]
             Vri[:, i + 1] = np.dot(AdTi[i], Vri[:, i]) + Ai[:, i] * dqrs[i]
-            Vdri[:, i + 1] = np.dot(AdTi[i], Vdri[:, i]) + Ai[:, i] * ddqrs[i] + np.dot(mr.ad(Vi[:, i + 1]), Ai[:, i]) * \
-                             dqrs[i]
+            Vdri[:, i + 1] = (
+                np.dot(AdTi[i], Vdri[:, i])
+                + Ai[:, i] * ddqrs[i]
+                + np.dot(mr.ad(Vi[:, i + 1]), Ai[:, i]) * dqrs[i]
+            )
 
         Yi = np.zeros((6, Robot._link_para_num * self._dof))
         Y = np.zeros((self._dof, Robot._link_para_num * self._dof))
         for i in range(self._dof - 1, -1, -1):
             Yi = AdTi[i + 1].T @ Yi
-            Yi[:, i * Robot._link_para_num: (i + 1) * Robot._link_para_num] = circle(Vdri[:, i + 1]) - 0.5 * mr.ad(
-                Vi[:, i + 1]).T @ circle(Vri[:, i + 1]) - 0.5 * mr.ad(Vri[:, i + 1]).T @ circle(
-                Vi[:, i + 1]) + 0.5 * circle(mr.ad(Vri[:, i + 1]) @ Vi[:, i + 1])
+            Yi[:, i * Robot._link_para_num : (i + 1) * Robot._link_para_num] = (
+                circle(Vdri[:, i + 1])
+                - 0.5 * mr.ad(Vi[:, i + 1]).T @ circle(Vri[:, i + 1])
+                - 0.5 * mr.ad(Vri[:, i + 1]).T @ circle(Vi[:, i + 1])
+                + 0.5 * circle(mr.ad(Vri[:, i + 1]) @ Vi[:, i + 1])
+            )
             Y[i, :] = Ai[:, i].T @ Yi
         Y = np.hstack((Y, np.diag(ddqrs)))
         return Y
@@ -216,17 +264,30 @@ class Robot(abc.ABC):
         for i in range(self._dof):
             Mi = np.dot(Mi, self._Ms[i])
             Ai[:, i] = np.dot(mr.Adjoint(mr.TransInv(Mi)), self._Ses[i])
-            AdTi[i] = mr.Adjoint(np.dot(mr.MatrixExp6(mr.VecTose3(Ai[:, i] * -qs[i])), mr.TransInv(self._Ms[i])))
+            AdTi[i] = mr.Adjoint(
+                np.dot(
+                    mr.MatrixExp6(mr.VecTose3(Ai[:, i] * -qs[i])),
+                    mr.TransInv(self._Ms[i]),
+                )
+            )
             Vi[:, i + 1] = np.dot(AdTi[i], Vi[:, i]) + Ai[:, i] * dqs[i]
             Vri[:, i + 1] = np.dot(AdTi[i], Vri[:, i]) + Ai[:, i] * dqrs[i]
-            Vdri[:, i + 1] = np.dot(AdTi[i], Vdri[:, i]) + Ai[:, i] * ddqrs[i] + np.dot(mr.ad(Vi[:, i + 1]), Ai[:, i]) * \
-                             dqrs[i]
+            Vdri[:, i + 1] = (
+                np.dot(AdTi[i], Vdri[:, i])
+                + Ai[:, i] * ddqrs[i]
+                + np.dot(mr.ad(Vi[:, i + 1]), Ai[:, i]) * dqrs[i]
+            )
 
         for i in range(self._dof - 1, -1, -1):
-            Fi = np.array(AdTi[i + 1]).T @ Fi + self._Gs[i] @ Vdri[:, i + 1] + 0.5 * (
+            Fi = (
+                np.array(AdTi[i + 1]).T @ Fi
+                + self._Gs[i] @ Vdri[:, i + 1]
+                + 0.5
+                * (
                     -mr.ad(Vi[:, i + 1]).T @ (self._Gs[i] @ Vri[:, i + 1])
                     - mr.ad(Vri[:, i + 1]).T @ (self._Gs[i] @ Vi[:, i + 1])
                     + self._Gs[i] @ (mr.ad(Vri[:, i + 1]) @ Vi[:, i + 1])
+                )
             )
 
             taulist[i] = np.dot(np.array(Fi).T, Ai[:, i]) + self._Jms[i] * ddqrs[i]
@@ -258,13 +319,14 @@ class Robot(abc.ABC):
         self._phi = phi
 
     def __getstate__(self):
-        state = {"dof": self._dof,
-                 "q0": self.q0,
-                 "alpha_array": self.alpha_array,
-                 "a_array": self.a_array,
-                 "d_array": self.d_array,
-                 "theta_array": self.theta_array,
-                 }
+        state = {
+            "dof": self._dof,
+            "q0": self.q0,
+            "alpha_array": self.alpha_array,
+            "a_array": self.a_array,
+            "d_array": self.d_array,
+            "theta_array": self.theta_array,
+        }
         return state
 
     def __setstate__(self, state):
@@ -277,6 +339,12 @@ class Robot(abc.ABC):
         links = []
         for i in range(6):
             links.append(
-                rtb.DHLink(d=self.d_array[i], alpha=self.alpha_array[i], a=self.a_array[i], offset=self.theta_array[i],
-                           mdh=True))
+                rtb.DHLink(
+                    d=self.d_array[i],
+                    alpha=self.alpha_array[i],
+                    a=self.a_array[i],
+                    offset=self.theta_array[i],
+                    mdh=True,
+                )
+            )
         self.robot = rtb.DHRobot(links)

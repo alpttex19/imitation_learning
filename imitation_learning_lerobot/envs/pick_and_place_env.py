@@ -78,21 +78,21 @@ class PickAndPlaceEnv(Env):
         self._robot.set_base(
             mj.get_body_pose(self._mj_model, self._mj_data, "link_base")
         )
-        self._robot_q = np.array([0.0, 0.0, np.pi / 2, 0.0, -np.pi / 2, 0.0])
+        self._robot_q = np.array([0.0, 0.0, np.pi / 2, 0.0, -np.pi / 2, 0.0, 0.0])
         self._robot.set_joint(self._robot_q)
         [
             mj.set_joint_q(self._mj_model, self._mj_data, jn, self._robot_q[i])
             for i, jn in enumerate(self._xarm7_joint_names)
         ]
         mujoco.mj_forward(self._mj_model, self._mj_data)
-        mj.attach(
-            self._mj_model,
-            self._mj_data,
-            "attach",
-            "gripper",
-            self._robot.fkine(self._robot_q),
-        )
-        mujoco.mj_forward(self._mj_model, self._mj_data)
+        # mj.attach(
+        #     self._mj_model,
+        #     self._mj_data,
+        #     "attach",
+        #     "gripper",
+        #     self._robot.fkine(self._robot_q),
+        # )
+        # mujoco.mj_forward(self._mj_model, self._mj_data)
 
         self._robot.set_tool(sm.SE3.Trans(0.0, 0.0, 0.15))
         self._robot_T = self._robot.fkine(self._robot_q)
@@ -129,9 +129,9 @@ class PickAndPlaceEnv(Env):
                 )
                 self._robot.move_cartesian(Ti)
                 joint_position = self._robot.get_joint()
-                self._mj_data.ctrl[:6] = joint_position
+                self._mj_data.ctrl[:7] = joint_position
                 action[3] = np.clip(action[3], 0, 1)
-                self._mj_data.ctrl[6] = action[3] * 255.0
+                self._mj_data.ctrl[7] = action[3] * 255.0
                 mujoco.mj_step(self._mj_model, self._mj_data)
 
         observation = self._get_observation()

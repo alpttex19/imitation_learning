@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from .robot import Robot
-from .xarm_manager import CasadiRobotManager
+from .xarm_manager import RobotWrapper
 
 
 class XArm7(Robot):
@@ -17,7 +17,7 @@ class XArm7(Robot):
         super().__init__()
 
         # XArm7基本参数
-        self.robot_manager = CasadiRobotManager()
+        self.robot = RobotWrapper()
         self._dof = 7
         self.q0 = [0.0, -0.247, 0.0, 0.909, 0.0, 1.15644, 0.0]  # 从XML的keyframe获取
 
@@ -57,7 +57,7 @@ class XArm7(Robot):
             raise ValueError(f"关节角度数组长度应为{self._dof}")
 
         # 转换为spatialmath的SE3格式
-        return SE3(self.robot_manager.fkine(q))
+        return SE3(self.robot.fkine(q))
 
     def ikine(self, Twt: SE3, q_init: np.ndarray = None) -> np.ndarray:
         """
@@ -71,18 +71,7 @@ class XArm7(Robot):
         Returns:
             np.ndarray: 关节角度数组，如果求解失败返回空数组
         """
-        if q_init is None:
-            q_init = np.zeros(self._dof)
-        else:
-            q_init = np.array(q_init)
-
-        # 检查初始关节角度是否在限制范围内
-        q_init = np.clip(q_init, self.joint_limits_lower, self.joint_limits_upper)
-
-        # 目标位姿矩阵
-        sol_q, norm_err = self.robot_manager.ik(pos=Twt.t, rot=Twt.R)
-
-        return sol_q, norm_err
+        return self.robot.ikine(Twt)
 
     def move_cartesian(self, target_pose: SE3) -> bool:
         """
