@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent.parent))
 from typing import Type
 from pathlib import Path
 import argparse
@@ -15,19 +19,15 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--env.type',
-        type=str,
-        dest='env_type',
-        required=True,
-        help='env type'
+        "--env.type", type=str, dest="env_type", required=True, help="env type"
     )
 
     parser.add_argument(
-        '--handler.type',
+        "--handler.type",
         type=str,
-        dest='handler_type',
+        dest="handler_type",
         required=True,
-        help='handler type'
+        help="handler type",
     )
 
     return parser.parse_args()
@@ -46,9 +46,9 @@ def teleoperate(env_cls: Type[Env], handler_type):
         cv2.namedWindow(camera, cv2.WINDOW_GUI_NORMAL)
 
     data_dict = {
-        '/observations/agent_pos': [],
-        **{f'/observations/pixels/{camera}': [] for camera in env_cls.cameras},
-        '/actions': []
+        "/observations/agent_pos": [],
+        **{f"/observations/pixels/{camera}": [] for camera in env_cls.cameras},
+        "/actions": [],
     }
 
     rate_limiter = RateLimiter(frequency=env.control_hz)
@@ -63,10 +63,12 @@ def teleoperate(env_cls: Type[Env], handler_type):
         last_action[:] = action
         action[:] = handler.action
         if np.max(np.abs(action - last_action)) > 1e-6:
-            data_dict['/observations/agent_pos'].append(observation['agent_pos'])
+            data_dict["/observations/agent_pos"].append(observation["agent_pos"])
             for camera in env_cls.cameras:
-                data_dict[f'/observations/pixels/{camera}'].append(observation['pixels'][camera])
-            data_dict['/actions'].append(action)
+                data_dict[f"/observations/pixels/{camera}"].append(
+                    observation["pixels"][camera]
+                )
+            data_dict["/actions"].append(action)
         else:
             action[:] = last_action
 
@@ -74,7 +76,9 @@ def teleoperate(env_cls: Type[Env], handler_type):
 
         env.render()
         for camera in env.cameras:
-            cv2.imshow(camera, cv2.cvtColor(observation["pixels"][camera], cv2.COLOR_RGB2BGR))
+            cv2.imshow(
+                camera, cv2.cvtColor(observation["pixels"][camera], cv2.COLOR_RGB2BGR)
+            )
         cv2.waitKey(1)
 
         rate_limiter.sleep()
@@ -87,28 +91,47 @@ def teleoperate(env_cls: Type[Env], handler_type):
 
 
 def write_to_h5(env_cls: Type[Env], data_dict: dict):
-    h5_dir = Path(__file__).parent.parent.parent / Path("outputs/datasets") / Path(env_cls.name + "_hdf5")
+    h5_dir = (
+        Path(__file__).parent.parent.parent
+        / Path("outputs/datasets")
+        / Path(env_cls.name + "_hdf5")
+    )
     h5_dir.mkdir(parents=True, exist_ok=True)
 
     index = len([f for f in h5_dir.iterdir() if f.is_file()])
 
     h5_path = h5_dir / Path(f"episode_{index:06d}.hdf5")
 
-    with h5py.File(h5_path, 'w', ) as root:
+    with h5py.File(
+        h5_path,
+        "w",
+    ) as root:
 
-        episode_length = len(data_dict['/actions'])
+        episode_length = len(data_dict["/actions"])
 
-        obs = root.create_group('observations')
+        obs = root.create_group("observations")
 
-        obs.create_dataset('agent_pos', (episode_length, env_cls.state_dim), dtype='float32', compression='gzip')
+        obs.create_dataset(
+            "agent_pos",
+            (episode_length, env_cls.state_dim),
+            dtype="float32",
+            compression="gzip",
+        )
 
-        pixels = obs.create_group('pixels')
+        pixels = obs.create_group("pixels")
         for camera in env_cls.cameras:
             shape = (episode_length, env_cls.height, env_cls.width, 3)
             chunks = (1, env_cls.height, env_cls.width, 3)
-            pixels.create_dataset(camera, shape=shape, dtype='uint8', chunks=chunks, compression='gzip')
+            pixels.create_dataset(
+                camera, shape=shape, dtype="uint8", chunks=chunks, compression="gzip"
+            )
 
-        root.create_dataset('actions', (episode_length, env_cls.action_dim), dtype='float32', compression='gzip')
+        root.create_dataset(
+            "actions",
+            (episode_length, env_cls.action_dim),
+            dtype="float32",
+            compression="gzip",
+        )
 
         for name, array in data_dict.items():
             root[name][...] = array
@@ -124,5 +147,5 @@ def main():
     write_to_h5(env_cls, data_dict)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

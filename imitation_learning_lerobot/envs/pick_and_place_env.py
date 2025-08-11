@@ -78,7 +78,7 @@ class PickAndPlaceEnv(Env):
         self._robot.set_base(
             mj.get_body_pose(self._mj_model, self._mj_data, "link_base")
         )
-        self._robot_q = np.array([0.0, 0.0, np.pi / 2, 0.0, -np.pi / 2, 0.0, 0.0])
+        self._robot_q = np.array([0.0, 0.0, 0, 0.0, 0, 0.0, 0.0])
         self._robot.set_joint(self._robot_q)
         [
             mj.set_joint_q(self._mj_model, self._mj_data, jn, self._robot_q[i])
